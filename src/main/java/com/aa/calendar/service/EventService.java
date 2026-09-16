@@ -3,6 +3,7 @@ package com.aa.calendar.service;
 import com.aa.calendar.dto.EventRequestDTO;
 import com.aa.calendar.dto.EventResponseDTO;
 import com.aa.calendar.entity.Task;
+import com.aa.calendar.exception.BadRequestException;
 import com.aa.calendar.exception.ResourceNotFoundException;
 import com.aa.calendar.repository.TaskRepository;
 
@@ -24,6 +25,7 @@ public class EventService {
     }
 
     public EventResponseDTO create(EventRequestDTO dto) {
+        validateEventDates(dto.startTime(), dto.endTime());
         Task task = new Task();
         task.setTitle(dto.title());
         task.setDescription(dto.description());
@@ -65,6 +67,7 @@ public class EventService {
     }
 
     public EventResponseDTO updateByID(Long id, EventRequestDTO dto){
+        validateEventDates(dto.startTime(), dto.endTime());
         Task task =  repository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Event with the given id : "+id+" is not found."));
         task.setTitle(dto.title());
         task.setDescription(dto.description());
@@ -88,4 +91,11 @@ public class EventService {
     public void deleteEvents() {
         repository.deleteAll();
     }
+
+    private void validateEventDates(LocalDateTime start, LocalDateTime end) {
+        if (start.isAfter(end)) {
+            throw  new BadRequestException("Start date is after end date.");
+        }
+    }
+
 }
