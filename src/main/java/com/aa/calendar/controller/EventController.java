@@ -1,7 +1,7 @@
 package com.aa.calendar.controller;
 
-import com.aa.calendar.dto.EventRequestDTO;
-import com.aa.calendar.dto.EventResponseDTO;
+import com.aa.calendar.dto.*;
+
 import com.aa.calendar.service.EventService;
 
 import jakarta.validation.Valid;
@@ -23,18 +23,12 @@ public class EventController {
         this.service = service;
     }
 
-    @RequestMapping("/FatMaN")
+
     @PostMapping
-    public ResponseEntity<EventResponseDTO> create(@Valid @RequestBody EventRequestDTO request) {
+    public ResponseEntity<EventResponseDTO> create(@Valid @RequestBody EventRequestDTO request ) {
         EventResponseDTO created = service.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
-
-//    @GetMapping
-//    public ResponseEntity<List<EventResponseDTO>> getAll() {
-//        return ResponseEntity.ok(service.getAll());
-//    }
-// old get all function
 
 
     @GetMapping("/{id}")
@@ -56,6 +50,7 @@ public class EventController {
     public ResponseEntity<EventResponseDTO> deleteById(@PathVariable Long id) {
         return ResponseEntity.ok(service.deleteByID(id));
     }
+
     @DeleteMapping
     public ResponseEntity<Void> deleteEvents() {
         service.deleteEvents();
@@ -66,4 +61,11 @@ public class EventController {
     public ResponseEntity<EventResponseDTO> updateById(@PathVariable Long id, @Valid @RequestBody EventRequestDTO request) {
         return ResponseEntity.ok(service.updateByID(id,request));
     }
+
+    @PostMapping("{taskId}/assign/{userId}")
+    public ResponseEntity<Void> assignTask(@PathVariable Long taskId, @PathVariable Long userId) {
+        service.assignUserToTask(userId , taskId);
+        return  ResponseEntity.noContent().build();
+    }
+
 }
