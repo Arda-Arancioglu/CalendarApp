@@ -68,4 +68,8 @@ public class EventController {
         return  ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/myCalendar/{userId}")
+    public ResponseEntity<List<EventResponseDTO>> getMyCalendar(@PathVariable Long userId) {
+        return ResponseEntity.ok(service.myCalendar(userId));
+    }
 }

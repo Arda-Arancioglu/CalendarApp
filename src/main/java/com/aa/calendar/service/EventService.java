@@ -101,15 +101,17 @@ public class EventService {
 
     @Transactional
     public void assignUserToTask(Long userId, Long taskId) {
-        if(userTasksRepository.existsByUser_UserIdAndTask_TaskId(userId,taskId)){
-            throw new BadRequestException("User :"+ userId +" has already assigned to task :"+taskId);
-        }
 
         User user = userRepository.findById(userId)
                 .orElseThrow(()->new ResourceNotFoundException("User "+ userId +" not found"));
 
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(()->new ResourceNotFoundException("Task "+ taskId +" not found"));
+
+        if(userTasksRepository.existsByUser_UserIdAndTask_TaskId(userId,taskId)){
+            throw new BadRequestException("User :"+ userId +" has already assigned to task :"+taskId);
+        }
+
 
         UserTasks userTasks = new UserTasks();
         userTasks.setUser(user);
@@ -118,6 +120,11 @@ public class EventService {
 
     }
 
+    public List<EventResponseDTO> myCalendar(Long userId) {
+        userRepository.findById(userId).orElseThrow(()-> new BadRequestException("User not found"));
+        List<UserTasks> myEvents =  userTasksRepository.findByUser_UserId(userId);
+        return myEvents.stream().map(UserTasks::getTask).map(this::mapToDTO).toList();
+    }
 
     private void validateEventDates(LocalDateTime start, LocalDateTime end) {
         if (start.isAfter(end)) {

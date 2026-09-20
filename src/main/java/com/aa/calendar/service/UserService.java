@@ -1,23 +1,34 @@
 package com.aa.calendar.service;
 
+
 import com.aa.calendar.dto.UserRequestDTO;
 import com.aa.calendar.dto.UserResponseDTO;
+
 import com.aa.calendar.entity.User;
+
 import com.aa.calendar.exception.BadRequestException;
 
+import com.aa.calendar.repository.TaskRepository;
 import com.aa.calendar.repository.UserRepository;
 
+import com.aa.calendar.repository.UserTasksRepository;
 import org.springframework.stereotype.Service;
+
 
 import java.util.regex.Pattern;
 
 @Service
 public class UserService {
 
+    private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private  final UserTasksRepository userTasksRepository;
 
-    public UserService(UserRepository userRepository ) {
+    public UserService(TaskRepository taskRepository , UserRepository userRepository ,UserTasksRepository userTasksRepository) {
+        this.taskRepository = taskRepository;
         this.userRepository = userRepository;
+        this.userTasksRepository = userTasksRepository;
+
     }
 
     public UserResponseDTO mapToDTO(User user){
@@ -40,6 +51,11 @@ public class UserService {
         User saved =  userRepository.save(user);
         return mapToDTO(saved);
     }
+
+
+
+
+
 
     private static final Pattern Password_Pattern = Pattern.compile(
             "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&._\\-#^])[A-Za-z\\d@$!%*?&._\\-#^]{8,32}$"
