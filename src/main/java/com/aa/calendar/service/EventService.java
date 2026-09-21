@@ -32,14 +32,22 @@ public class EventService {
 
     }
 
+    @Transactional
     public EventResponseDTO create(EventRequestDTO dto) {
         validateEventDates(dto.startTime(), dto.endTime());
+        User creator = userRepository.findById(dto.creatorId()).orElseThrow(()->new ResourceNotFoundException("User not found"));
         Task task = new Task();
         task.setTitle(dto.title());
         task.setDescription(dto.description());
         task.setStartTime(dto.startTime());
         task.setEndTime(dto.endTime());
         Task saved = taskRepository.save(task);
+
+        //auto adding the creator
+        UserTasks userTasks = new UserTasks();
+        userTasks.setUser(creator);
+        userTasks.setTask(task);
+        userTasksRepository.save(userTasks);
 
         return mapToDTO(saved);
     }

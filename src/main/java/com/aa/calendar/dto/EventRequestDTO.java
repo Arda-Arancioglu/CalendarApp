@@ -11,9 +11,14 @@ public record EventRequestDTO (
         String title,
 
         String description,
+
         @NotNull
         LocalDateTime startTime ,
+
         @NotNull
-        LocalDateTime endTime
+        LocalDateTime endTime,
+
+        @NotNull
+        Long creatorId
 
 ){}
