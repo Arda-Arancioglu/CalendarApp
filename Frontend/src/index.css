@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  --color-dark-bg: #090A0F;
+  --color-dark-surface: #11131F;
+  --color-dark-elevated: #1A1D2D;
+  --color-dark-border: #272A3D;
+  --color-dark-hover: #222638;
+
+  --color-accent: #6366F1;
+  --color-accent-hover: #4F46E5;
+  --color-accent-border: #4338CA;
+
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: #090A0F;
+  color: #F4F4F5;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Custom crisp dark scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090A0F;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #272A3D;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3F4462;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+  cursor: pointer;
+}
