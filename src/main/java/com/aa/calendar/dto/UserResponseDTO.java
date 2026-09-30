@@ -2,8 +2,7 @@ package com.aa.calendar.dto;
 
 public record UserResponseDTO(
 
-
-        Long id,
+        Long Userid,
         String username
 
 ){}
