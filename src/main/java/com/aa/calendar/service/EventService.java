@@ -33,9 +33,9 @@ public class EventService {
     }
 
     @Transactional
-    public EventResponseDTO create(EventRequestDTO dto) {
+    public EventResponseDTO create(EventRequestDTO dto , Long userId) {
         validateEventDates(dto.startTime(), dto.endTime());
-        User creator = userRepository.findById(dto.creatorId()).orElseThrow(()->new ResourceNotFoundException("User not found"));
+        User creator = userRepository.findById(userId).orElseThrow(()->new ResourceNotFoundException("User not found"));
         Task task = new Task();
         task.setTitle(dto.title());
         task.setDescription(dto.description());

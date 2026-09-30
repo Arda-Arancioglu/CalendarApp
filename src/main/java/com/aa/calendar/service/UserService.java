@@ -81,7 +81,7 @@ public class UserService {
         }
 
         if (username.length() < 3 ||username.length() > 20) {
-            throw new BadRequestException("Username is not valid.");
+            throw new BadRequestException("Username should be between 3 and 20 characters.");
         }
         //Lastly repo check because it is costly
         if ( userRepository.existsByUsername(username)){

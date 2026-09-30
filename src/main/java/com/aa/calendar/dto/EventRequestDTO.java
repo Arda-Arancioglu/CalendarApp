@@ -16,9 +16,6 @@ public record EventRequestDTO (
         LocalDateTime startTime ,
 
         @NotNull
-        LocalDateTime endTime,
-
-        @NotNull
-        Long creatorId
+        LocalDateTime endTime
 
 ){}

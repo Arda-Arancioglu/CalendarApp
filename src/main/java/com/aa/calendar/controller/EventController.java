@@ -9,6 +9,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,8 +26,10 @@ public class EventController {
 
 
     @PostMapping
-    public ResponseEntity<EventResponseDTO> create(@Valid @RequestBody EventRequestDTO request ) {
-        EventResponseDTO created = service.create(request);
+    public ResponseEntity<EventResponseDTO> create(@Valid @RequestBody EventRequestDTO request
+            ,Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        EventResponseDTO created = service.create(request,userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -68,8 +71,9 @@ public class EventController {
         return  ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/myCalendar/{userId}")
-    public ResponseEntity<List<EventResponseDTO>> getMyCalendar(@PathVariable Long userId) {
+    @GetMapping("/myCalendar")
+    public ResponseEntity<List<EventResponseDTO>> getMyCalendar(Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
         return ResponseEntity.ok(service.myCalendar(userId));
     }
 }
