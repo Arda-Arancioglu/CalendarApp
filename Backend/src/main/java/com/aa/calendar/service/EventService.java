@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -52,11 +53,40 @@ public class EventService {
         return mapToDTO(saved);
     }
 
-    public List<EventResponseDTO> getAll() {
-        return taskRepository.findAll()
-            .stream()
-            .map(this::mapToDTO)
-            .toList();
+    public List<EventResponseDTO> getAll(Long userId) {
+
+        userRepository.findById(userId).orElseThrow(()-> new BadRequestException("User not found"));
+
+        List<UserTasks> myEvents =  userTasksRepository.findByUser_UserId(userId);
+
+        return myEvents.stream().map(UserTasks::getTask).map(this::mapToDTO).toList();
+    }
+
+    public List<EventResponseDTO> getEventsInRange(Long userId,LocalDateTime start, LocalDateTime end) {
+        if (start != null && end != null) {
+            validateEventDates(start, end);
+        }
+        userRepository.findById(userId).orElseThrow(()-> new ResourceNotFoundException("User not found"));
+
+        List<UserTasks> userEvents = userTasksRepository.findByUser_UserId(userId);
+        List<EventResponseDTO> events = new ArrayList<>();
+
+        for (UserTasks userTask : userEvents) {
+            Task task = userTask.getTask();
+
+            if(task==null || task.getStartTime()==null || task.getEndTime()==null){
+                continue;
+            }
+
+            boolean endsBeforeStart = (start!= null && task.getEndTime().isBefore(start));
+            boolean startsAfterEnd = (end!= null && task.getStartTime().isAfter(end));
+
+            if (!endsBeforeStart && !startsAfterEnd) {
+                events.add(mapToDTO(task));
+            }
+        }
+
+        return events;
     }
 
     public EventResponseDTO mapToDTO(Task task){
@@ -93,17 +123,10 @@ public class EventService {
         return  mapToDTO(task);
     }
 
-    public List<EventResponseDTO> getEventsInRange(LocalDateTime start, LocalDateTime end) {
-        List<Task> myEvent = taskRepository.findByStartTimeBetween(start, end);
-        if (!myEvent.isEmpty()) {
-           return myEvent.stream().map(this::mapToDTO).toList();
-        }
-        throw  new ResourceNotFoundException("There is no event between given start time and end time.");
 
-
-    }
 
     public void deleteEvents() {
+        userTasksRepository.deleteAll();
         taskRepository.deleteAll();
     }
 
@@ -128,11 +151,7 @@ public class EventService {
 
     }
 
-    public List<EventResponseDTO> myCalendar(Long userId) {
-        userRepository.findById(userId).orElseThrow(()-> new BadRequestException("User not found"));
-        List<UserTasks> myEvents =  userTasksRepository.findByUser_UserId(userId);
-        return myEvents.stream().map(UserTasks::getTask).map(this::mapToDTO).toList();
-    }
+
 
     private void validateEventDates(LocalDateTime start, LocalDateTime end) {
         if (start.isAfter(end)) {

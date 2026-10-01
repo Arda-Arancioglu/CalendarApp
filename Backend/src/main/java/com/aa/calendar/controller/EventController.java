@@ -38,15 +38,19 @@ public class EventController {
     public ResponseEntity<EventResponseDTO> getById(@PathVariable Long id) {
         return ResponseEntity.ok(service.getByID(id));
     }
+
     @GetMapping
     public ResponseEntity<List<EventResponseDTO>> getEvents(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)LocalDateTime start,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)LocalDateTime end
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)LocalDateTime end,
+            Authentication auth
             ) {
+        Long userId = (Long) auth.getPrincipal();
+
         if (start == null && end == null) {
-            return ResponseEntity.ok(service.getAll());
+            return ResponseEntity.ok(service.getAll(userId));
         }
-        return ResponseEntity.ok(service.getEventsInRange(start, end));
+        return ResponseEntity.ok(service.getEventsInRange(userId, start, end));
     }
 
     @DeleteMapping("/{id}")
@@ -71,9 +75,5 @@ public class EventController {
         return  ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/myCalendar")
-    public ResponseEntity<List<EventResponseDTO>> getMyCalendar(Authentication authentication) {
-        Long userId = (Long) authentication.getPrincipal();
-        return ResponseEntity.ok(service.myCalendar(userId));
-    }
+
 }
