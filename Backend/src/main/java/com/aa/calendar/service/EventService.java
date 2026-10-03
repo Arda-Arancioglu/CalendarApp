@@ -1,16 +1,12 @@
 package com.aa.calendar.service;
 
 import com.aa.calendar.dto.*;
-import com.aa.calendar.entity.Task;
-import com.aa.calendar.entity.User;
-import com.aa.calendar.entity.UserTasks;
+import com.aa.calendar.entity.*;
 import com.aa.calendar.exception.BadRequestException;
 import com.aa.calendar.exception.ResourceNotFoundException;
-import com.aa.calendar.repository.TaskRepository;
+import com.aa.calendar.repository.*;
 
 
-import com.aa.calendar.repository.UserRepository;
-import com.aa.calendar.repository.UserTasksRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +14,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class EventService {
@@ -25,12 +23,16 @@ public class EventService {
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
     private  final UserTasksRepository userTasksRepository;
+    private final CategoryRepository categoryRepository;
+    private  final TaskCategoriesRepository taskCategoriesRepository;
 
-    public EventService(TaskRepository taskRepository , UserRepository userRepository ,UserTasksRepository userTasksRepository) {
+
+    public EventService(TaskRepository taskRepository , UserRepository userRepository ,UserTasksRepository userTasksRepository,CategoryRepository categoryRepository, TaskCategoriesRepository taskCategoriesRepository) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.userTasksRepository = userTasksRepository;
-
+        this.categoryRepository = categoryRepository;
+        this.taskCategoriesRepository = taskCategoriesRepository;
     }
 
     @Transactional
@@ -42,14 +44,25 @@ public class EventService {
         task.setDescription(dto.description());
         task.setStartTime(dto.startTime());
         task.setEndTime(dto.endTime());
+        task.setFlexible(dto.isFlexible() != null && dto.isFlexible());
         Task saved = taskRepository.save(task);
 
         //auto adding the creator
         UserTasks userTasks = new UserTasks();
         userTasks.setUser(creator);
-        userTasks.setTask(task);
+        userTasks.setTask(saved);
         userTasksRepository.save(userTasks);
 
+        if (dto.categoryIds()!=null && !dto.categoryIds().isEmpty()){
+
+            Set<Category> categories = categoryRepository.findAllByCategoryIdInAndUser_UserId(dto.categoryIds(),userId);
+            for (Category category : categories) {
+                TaskCategories tc = new TaskCategories();
+                tc.setTask(saved);
+                tc.setCategory(category);
+                taskCategoriesRepository.save(tc);
+            }
+        }
         return mapToDTO(saved);
     }
 
@@ -89,13 +102,27 @@ public class EventService {
         return events;
     }
 
-    public EventResponseDTO mapToDTO(Task task){
+    public EventResponseDTO mapToDTO(Task task) {
+        List<TaskCategories> taskCategories = taskCategoriesRepository.findByTask_TaskId(task.getTaskId());
+        Set<CategoryResponseDTO>  categoryDTOs = taskCategories
+                .stream()
+                .map(tc->new CategoryResponseDTO(
+                        tc.getCategory().getCategoryId(),
+                        tc.getCategory().getName(),
+                        tc.getCategory().getColor()
+                ))
+                .collect(Collectors.toSet());
+
         return new EventResponseDTO(
-            task.getTaskId(),
-            task.getTitle(),
-            task.getDescription(),
-            task.getStartTime(),
-            task.getEndTime()
+                task.getTaskId(),
+                task.getTitle(),
+                task.getDescription(),
+                task.getStartTime(),
+                task.getEndTime(),
+                task.isFlexible(),
+                categoryDTOs
+
+
         );
     }
 
@@ -104,22 +131,43 @@ public class EventService {
         return mapToDTO(task);
     }
 
+    @Transactional
     public EventResponseDTO deleteByID(Long id){
         Task task =  taskRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Event with the given id : "+id+" is not found."));
         EventResponseDTO myResponse = mapToDTO(task);
+
         taskRepository.delete(task);
         //Delete and not deleteByID because OPTIMIZATIONN :D
+
+        taskCategoriesRepository.deleteByTask_TaskId(id);
+
         return  myResponse;
     }
 
-    public EventResponseDTO updateByID(Long id, EventRequestDTO dto){
+    @Transactional
+    public EventResponseDTO updateByID(Long id, EventRequestDTO dto, Long userId) {
         validateEventDates(dto.startTime(), dto.endTime());
-        Task task =  taskRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Event with the given id : "+id+" is not found."));
+        Task task =  taskRepository.findById(id)
+                .orElseThrow(()-> new ResourceNotFoundException("Event with the given id : "+id+" is not found."));
+
         task.setTitle(dto.title());
         task.setDescription(dto.description());
         task.setStartTime(dto.startTime());
         task.setEndTime(dto.endTime());
+        task.setFlexible(dto.isFlexible());
         taskRepository.save(task);
+
+        if (dto.categoryIds()!=null){
+            taskCategoriesRepository.deleteByTask_TaskId(id);
+            Set<Category> categories = categoryRepository.findAllByCategoryIdInAndUser_UserId(dto.categoryIds(),userId);
+            for (Category category : categories) {
+                TaskCategories tc = new TaskCategories();
+                tc.setTask(task);
+                tc.setCategory(category);
+                taskCategoriesRepository.save(tc);
+            }
+        }
+
         return  mapToDTO(task);
     }
 
@@ -130,26 +178,26 @@ public class EventService {
         taskRepository.deleteAll();
     }
 
-    @Transactional
-    public void assignUserToTask(Long userId, Long taskId) {
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(()->new ResourceNotFoundException("User "+ userId +" not found"));
-
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(()->new ResourceNotFoundException("Task "+ taskId +" not found"));
-
-        if(userTasksRepository.existsByUser_UserIdAndTask_TaskId(userId,taskId)){
-            throw new BadRequestException("User :"+ userId +" has already assigned to task :"+taskId);
-        }
-
-
-        UserTasks userTasks = new UserTasks();
-        userTasks.setUser(user);
-        userTasks.setTask(task);
-        userTasksRepository.save(userTasks);
-
-    }
+//    @Transactional
+//    public void assignUserToTask(Long userId, Long taskId) {
+//
+//        User user = userRepository.findById(userId)
+//                .orElseThrow(()->new ResourceNotFoundException("User "+ userId +" not found"));
+//
+//        Task task = taskRepository.findById(taskId)
+//                .orElseThrow(()->new ResourceNotFoundException("Task "+ taskId +" not found"));
+//
+//        if(userTasksRepository.existsByUser_UserIdAndTask_TaskId(userId,taskId)){
+//            throw new BadRequestException("User :"+ userId +" has already assigned to task :"+taskId);
+//        }
+//
+//
+//        UserTasks userTasks = new UserTasks();
+//        userTasks.setUser(user);
+//        userTasks.setTask(task);
+//        userTasksRepository.save(userTasks);
+//
+//    }
 
 
 

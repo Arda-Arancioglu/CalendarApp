@@ -65,15 +65,14 @@ public class EventController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<EventResponseDTO> updateById(@PathVariable Long id, @Valid @RequestBody EventRequestDTO request) {
-        return ResponseEntity.ok(service.updateByID(id,request));
+    public ResponseEntity<EventResponseDTO> updateById(@PathVariable Long id,
+                                                       @Valid @RequestBody EventRequestDTO request,
+                                                       Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(service.updateByID(id,request,userId));
     }
 
-    @PostMapping("{taskId}/assign/{userId}")
-    public ResponseEntity<Void> assignTask(@PathVariable Long taskId, @PathVariable Long userId) {
-        service.assignUserToTask(userId , taskId);
-        return  ResponseEntity.noContent().build();
-    }
+
 
 
 }
