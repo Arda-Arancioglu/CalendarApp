@@ -1,8 +1,6 @@
 package com.aa.calendar.controller;
 
-import com.aa.calendar.dto.SquadCreateRequestDTO;
-import com.aa.calendar.dto.SquadJoinRequestDTO;
-import com.aa.calendar.dto.SquadResponseDTO;
+import com.aa.calendar.dto.*;
 import com.aa.calendar.service.SquadService;
 
 import jakarta.validation.Valid;
@@ -25,10 +23,14 @@ public class SquadController {
     }
 
     @GetMapping
-    public ResponseEntity<List<SquadResponseDTO>> findAllSquads(Authentication authentication){
+    public ResponseEntity<List<SquadSummaryResponseDTO>> findAllSquads(Authentication authentication){
         Long userId = (Long) authentication.getPrincipal();
-
         return ResponseEntity.ok(squadService.getAllSquads(userId));
+    }
+    @GetMapping("/{id}")
+    public ResponseEntity<SquadDetailResponseDTO> findSquadById(@PathVariable Long id, Authentication authentication){
+        Long userId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(squadService.getSquad(userId,id));
     }
 
     @PostMapping
@@ -46,5 +48,29 @@ public class SquadController {
     }
 
 
+    @DeleteMapping("/{id}/leave")
+    public ResponseEntity<Void> leaveSquad(@PathVariable Long id, Authentication authentication){
+        Long userId = (Long) authentication.getPrincipal();
+        squadService.leaveSquad(userId,id);
+        return ResponseEntity.noContent().build();
+
+    }
+
+
+
+    @DeleteMapping("/{id}/kick")
+    public ResponseEntity<Void> kickMember(@PathVariable Long id, @Valid @RequestBody SquadKickRequestDTO kick, Authentication authentication){
+        Long userId = (Long) authentication.getPrincipal();
+        squadService.kickFromSquad(kick, userId ,id);
+        return ResponseEntity.noContent().build();
+
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteSquad(@PathVariable Long id, Authentication authentication){
+        Long userId = (Long) authentication.getPrincipal();
+        squadService.deleteSquad(userId,id);
+        return ResponseEntity.noContent().build();
+    }
 
 }

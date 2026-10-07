@@ -11,4 +11,5 @@ public interface SquadRepository extends JpaRepository<Squad, Long> {
     boolean existsByInviteCode(String inviteCode);
 
     Optional<Squad> findByInviteCode(String inviteCode);
+
 }

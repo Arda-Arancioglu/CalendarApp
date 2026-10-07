@@ -172,33 +172,10 @@ public class EventService {
     }
 
 
-
     public void deleteEvents() {
         userTasksRepository.deleteAll();
         taskRepository.deleteAll();
     }
-
-//    @Transactional
-//    public void assignUserToTask(Long userId, Long taskId) {
-//
-//        User user = userRepository.findById(userId)
-//                .orElseThrow(()->new ResourceNotFoundException("User "+ userId +" not found"));
-//
-//        Task task = taskRepository.findById(taskId)
-//                .orElseThrow(()->new ResourceNotFoundException("Task "+ taskId +" not found"));
-//
-//        if(userTasksRepository.existsByUser_UserIdAndTask_TaskId(userId,taskId)){
-//            throw new BadRequestException("User :"+ userId +" has already assigned to task :"+taskId);
-//        }
-//
-//
-//        UserTasks userTasks = new UserTasks();
-//        userTasks.setUser(user);
-//        userTasks.setTask(task);
-//        userTasksRepository.save(userTasks);
-//
-//    }
-
 
 
     private void validateEventDates(LocalDateTime start, LocalDateTime end) {

@@ -1,9 +1,8 @@
 package com.aa.calendar.service;
 
-import com.aa.calendar.dto.SquadCreateRequestDTO;
-import com.aa.calendar.dto.SquadJoinRequestDTO;
-import com.aa.calendar.dto.SquadResponseDTO;
+import com.aa.calendar.dto.*;
 import com.aa.calendar.entity.*;
+import com.aa.calendar.exception.AccessDeniedException;
 import com.aa.calendar.exception.ResourceNotFoundException;
 import com.aa.calendar.repository.SquadMembersRepository;
 import com.aa.calendar.repository.SquadRepository;
@@ -13,8 +12,8 @@ import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class SquadService {
@@ -31,11 +30,20 @@ public class SquadService {
 
     private SquadResponseDTO mapToDTO(Squad squad) {
        return  new SquadResponseDTO(
+                squad.getSquadId(),
                 squad.getSquadName(),
                 squad.getSquadDescription(),
                 squad.getInviteCode()
-
         );
+    }
+
+    private SquadSummaryResponseDTO mapToSummaryDTO(SquadMember squadMember) {
+       return new SquadSummaryResponseDTO(
+               squadMember.getSquad().getSquadId(),
+               squadMember.getSquad().getSquadName(),
+               squadMember.getSquad().getSquadDescription(),
+               squadMember.getRole()
+       );
     }
 
     private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -63,7 +71,7 @@ public class SquadService {
     @Transactional
     public SquadResponseDTO createSquad(SquadCreateRequestDTO dto, Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(()-> new ResourceNotFoundException("User not found with id " + userId));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found with id : " + userId));
 
         Squad squad = new Squad();
         squad.setSquadName(dto.squadName());
@@ -84,11 +92,11 @@ public class SquadService {
     @Transactional
     public SquadResponseDTO joinSquad(SquadJoinRequestDTO dto, Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(()-> new ResourceNotFoundException("User not found with id " + userId));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found with id : " + userId));
 
 
             Squad squad = squadRepository.findByInviteCode(dto.inviteCode())
-                    .orElseThrow(()-> new ResourceNotFoundException("Squad not found with given invite code" + dto.inviteCode()));
+                    .orElseThrow(()-> new ResourceNotFoundException("Squad not found with given invite code : " + dto.inviteCode()));
 
             if(squadMembersRepository.existsBySquad_SquadIdAndUser_UserId(squad.getSquadId(), userId)){
                throw new IllegalArgumentException("You are already in this squad");
@@ -102,17 +110,91 @@ public class SquadService {
             return mapToDTO(squad);
     }
 
-    public List<SquadResponseDTO> getAllSquads(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(()-> new ResourceNotFoundException("User not found with id " + userId));
-        List<SquadMember> sMember = squadMembersRepository.findAllByUser_UserId(userId);
-        List<Squad>  squads = sMember.stream().map(SquadMember::getSquad).toList();
-        List<SquadResponseDTO> response = new ArrayList<>();
-        for(Squad squad : squads){
-            response.add(mapToDTO(squad));
+    public List<SquadSummaryResponseDTO> getAllSquads(Long userId) {
+       if (!userRepository.existsById(userId)){
+           throw new ResourceNotFoundException("User not found with id : " + userId);
+       }
+       return squadMembersRepository.findAllByUser_UserId(userId).stream()
+               .map(this::mapToSummaryDTO)
+               .toList();
+    }
+
+    public SquadDetailResponseDTO getSquad(Long userId, Long squadId) {
+        if (!userRepository.existsById(userId)){
+            throw new ResourceNotFoundException("User not found with id : " + userId);
         }
 
-        return response;
+        if(!squadMembersRepository.existsBySquad_SquadIdAndUser_UserId(squadId, userId)){
+            throw new ResourceNotFoundException("You are not a member of this squad or there is no such squad ");
+        }
+
+        Squad squad =  squadRepository.findById(squadId).
+                orElseThrow(()-> new ResourceNotFoundException("Squad not found with id : " + squadId));
+
+        List<SquadMemberResponseDTO> memberList = squadMembersRepository.findAllBySquad_SquadId(squadId)
+                .stream()
+                .map(m -> new SquadMemberResponseDTO(
+                        m.getUser().getUserId(),
+                        m.getUser().getUsername(),
+                        m.getRole(),
+                        m.getJoinedAt()
+                )).toList();
+        return new SquadDetailResponseDTO(
+                squad.getSquadId(),
+                squad.getSquadName(),
+                squad.getSquadDescription(),
+                squad.getInviteCode(),
+                memberList
+        );
+    }
+
+    @Transactional
+    public void leaveSquad(Long userId, Long squadId) {
+        SquadMember myMember = squadMembersRepository.findBySquad_SquadIdAndUser_UserId(squadId, userId)
+                        .orElseThrow(()-> new ResourceNotFoundException("Squad not found with id : " + squadId));
+        if(myMember.getRole() == SquadRole.OWNER){
+            throw new AccessDeniedException("You can leave this squad after passing your Ownership or by deleting the whole squad");
+        }
+         squadMembersRepository.delete(myMember);
+    }
+
+    @Transactional
+    public void kickFromSquad(SquadKickRequestDTO requestDTO , Long userId , Long squadId ) {
+        //OWNER's cannot kick themselves?
+        //1 OWNER per squad
+        //objects.equals helps with null values
+        if (Objects.equals(userId, requestDTO.targetUserId())) {
+            throw new AccessDeniedException("You cannot kick yourself. Use the leave squad feature instead.");
+        }
+        SquadMember myMember = squadMembersRepository.findBySquad_SquadIdAndUser_UserId(squadId, userId)
+                .orElseThrow(()-> new ResourceNotFoundException("You are not in this squad or the squad id : "+ squadId+" is wrong" ));
+
+        SquadMember targetMember = squadMembersRepository.findBySquad_SquadIdAndUser_UserId(squadId, requestDTO.targetUserId())
+                .orElseThrow(()-> new ResourceNotFoundException("The target id : "+requestDTO.targetUserId() +" is not in this squad or the squad id : "+ squadId+" is wrong"));
+
+        if(myMember.getRole() == SquadRole.ADMIN &&  ( targetMember.getRole() == SquadRole.OWNER || targetMember.getRole() == SquadRole.ADMIN  )){
+           throw new AccessDeniedException("You cannot kick someone above your role in a squad");
+        }
+        if(myMember.getRole() == SquadRole.VIEWER){
+            throw new AccessDeniedException("You don't have permission to kick ANY squad member");
+        }
+
+        squadMembersRepository.delete(targetMember);
+    }
+
+    @Transactional
+    public void deleteSquad(Long userId, Long squadId) {
+
+        SquadMember myMember = squadMembersRepository.findBySquad_SquadIdAndUser_UserId(squadId, userId)
+                .orElseThrow(()-> new ResourceNotFoundException("You are not in this squad or the squad id : "+ squadId+" is wrong" ));
+
+        if(myMember.getRole() != SquadRole.OWNER ){
+            throw new AccessDeniedException("You cannot delete this squad if you are not the OWNER");
+        }
+
+        squadMembersRepository.deleteAllBySquad_SquadId(squadId);
+        squadRepository.deleteById(squadId);
+
     }
 
 
