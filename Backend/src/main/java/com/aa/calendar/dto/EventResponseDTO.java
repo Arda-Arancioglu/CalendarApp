@@ -9,8 +9,8 @@ public record EventResponseDTO(
         String description,
         LocalDateTime startTime,
         LocalDateTime endTime,
-        boolean isFlexible,
-        Set<CategoryResponseDTO> categories
-
+        Boolean isFlexible,
+        Set<CategoryResponseDTO> categories,
+        Boolean isPrivate
 
 ) {}

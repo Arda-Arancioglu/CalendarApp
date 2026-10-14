@@ -33,4 +33,7 @@ public class SquadMember {
     private SquadRole role;
 
     private LocalDateTime joinedAt;
+
+    @Enumerated(EnumType.STRING)
+    EventVisibility visibility =  EventVisibility.BUSY;
 }

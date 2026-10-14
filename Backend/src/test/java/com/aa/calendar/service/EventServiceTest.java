@@ -62,7 +62,8 @@ public class EventServiceTest {
                Time1,
                Time2,
                false,
-               Set.of()
+               Set.of(),
+               true
 
        );
     }
@@ -73,7 +74,8 @@ public class EventServiceTest {
                 Time3,
                 Time2,
                 false,
-                Set.of(1L,2L,3L)
+                Set.of(1L,2L,3L),
+                true
 
         );
     }
@@ -178,7 +180,8 @@ public class EventServiceTest {
                 Time1,
                 Time2,
                 false,
-                Set.of(1L,2L,3L)
+                Set.of(1L,2L,3L),
+                true
 
         );
         Category c1 = new Category();

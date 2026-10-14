@@ -120,7 +120,8 @@ public class EventService {
                 task.getStartTime(),
                 task.getEndTime(),
                 task.isFlexible(),
-                categoryDTOs
+                categoryDTOs,
+                task.isPrivate()
 
 
         );

@@ -33,4 +33,7 @@ public class Task {
     @Column(nullable = false)
     private boolean isFlexible;
 
+    @Column(nullable = false)
+    private boolean isPrivate= false;
+
 }

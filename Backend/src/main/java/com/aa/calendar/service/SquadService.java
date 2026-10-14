@@ -4,17 +4,14 @@ import com.aa.calendar.dto.*;
 import com.aa.calendar.entity.*;
 import com.aa.calendar.exception.AccessDeniedException;
 import com.aa.calendar.exception.ResourceNotFoundException;
-import com.aa.calendar.repository.SquadMembersRepository;
-import com.aa.calendar.repository.SquadRepository;
-import com.aa.calendar.repository.UserRepository;
+import com.aa.calendar.repository.*;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @Service
 public class SquadService {
@@ -22,11 +19,15 @@ public class SquadService {
     private final SquadMembersRepository squadMembersRepository;
     private final UserRepository userRepository;
     private final SquadRepository squadRepository;
+    private final TaskRepository taskRepository;
 
-    public SquadService(SquadMembersRepository squadMembersRepository, UserRepository userRepository, SquadRepository squadRepository) {
+
+    public SquadService(SquadMembersRepository squadMembersRepository, UserRepository userRepository, SquadRepository squadRepository, TaskRepository taskRepository) {
         this.squadMembersRepository = squadMembersRepository;
         this.userRepository = userRepository;
         this.squadRepository = squadRepository;
+        this.taskRepository = taskRepository;
+
     }
 
     private SquadResponseDTO mapToDTO(Squad squad) {
@@ -197,6 +198,88 @@ public class SquadService {
         squadRepository.deleteById(squadId);
 
     }
+
+
+    // view The people on your squad by squad id :
+
+    private List<SquadEventResponseDTO> mapToDTOEvent(List<Task> tasks , EventVisibility vis , Boolean isCaller) {
+        List<SquadEventResponseDTO> squadEvents = new ArrayList<>();
+        if(isCaller){
+            for(Task task : tasks){
+                SquadEventResponseDTO event = new SquadEventResponseDTO(
+                        task.getTaskId(),
+                        task.getTitle(),
+                        task.getStartTime(),
+                        task.getEndTime(),
+                        task.isFlexible()
+                );
+                squadEvents.add(event);
+            }
+            return squadEvents;
+        }
+        switch (vis){
+            case PUBLIC:
+                for(Task task : tasks){
+                    String displayTitle = task.isPrivate() ? "Private" : task.getTitle();
+                    SquadEventResponseDTO event = new SquadEventResponseDTO(
+                            task.getTaskId(),
+                            displayTitle,
+                            task.getStartTime(),
+                            task.getEndTime(),
+                            task.isFlexible()
+                    );
+                    squadEvents.add(event);
+                }
+                break;
+
+            case BUSY:
+                for(Task task : tasks){
+                    SquadEventResponseDTO event = new SquadEventResponseDTO(
+                            task.getTaskId(),
+                            "BUSY",
+                            task.getStartTime(),
+                            task.getEndTime(),
+                            task.isFlexible()
+                    );
+                    squadEvents.add(event);
+                }
+
+                break;
+            case MUTED:
+                //What does muted do ? nothing bur returns empty soo
+               default:
+        }
+
+        return squadEvents;
+    }
+
+    public List<SquadCalendarResponseDTO> getSquadCalendar(SquadCalendarRequestDTO dto, Long userId) {
+
+        if(!userRepository.existsById(userId) || !squadMembersRepository.existsBySquad_SquadIdAndUser_UserId(dto.squadId(),userId)){
+           throw new ResourceNotFoundException("User not found with id : " + userId + " in the given squad id: "+ dto.squadId()) ;
+       }
+
+       List<SquadMember> members = squadMembersRepository.findAllBySquad_SquadId(dto.squadId());
+       List<SquadCalendarResponseDTO> response = new ArrayList<>();
+
+       for(SquadMember member : members){
+           EventVisibility memberVis = member.getVisibility();
+           Long memberId  = member.getUser().getUserId();
+
+           boolean isCaller = memberId.equals(userId);
+
+           List <Task> tasks = taskRepository.findTasksByUserId(memberId);
+
+           List<SquadEventResponseDTO> events =  mapToDTOEvent(tasks,memberVis, isCaller);
+           SquadCalendarResponseDTO responseDTO = new SquadCalendarResponseDTO(memberId,events);
+           response.add(responseDTO);
+       }
+
+       return response;
+    }
+
+
+
 
 
 

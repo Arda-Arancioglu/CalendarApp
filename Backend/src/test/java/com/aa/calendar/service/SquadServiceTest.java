@@ -1,12 +1,11 @@
 package com.aa.calendar.service;
 
+import com.aa.calendar.dto.SquadCalendarRequestDTO;
 import com.aa.calendar.dto.SquadKickRequestDTO;
-import com.aa.calendar.entity.Squad;
-import com.aa.calendar.entity.SquadMember;
-import com.aa.calendar.entity.SquadRole;
+import com.aa.calendar.entity.*;
 import com.aa.calendar.exception.AccessDeniedException;
 import com.aa.calendar.repository.SquadMembersRepository;
-import com.aa.calendar.repository.SquadRepository;
+import com.aa.calendar.repository.TaskRepository;
 import com.aa.calendar.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -16,6 +15,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -31,8 +32,9 @@ class SquadServiceTest {
    @Mock
    private  UserRepository userRepository;
 
+
    @Mock
-   private  SquadRepository squadRepository;
+   private TaskRepository taskRepository;
 
    @InjectMocks
    private SquadService squadService;
@@ -42,11 +44,21 @@ class SquadServiceTest {
    private static final Long ADMIN_ID = 2L;
    private static final Long VIEWER_ID = 3L;
 
+    private static final LocalDateTime Time1 = LocalDateTime.of(2026,10,13,14,0);
+    private static final LocalDateTime Time2 = Time1.plusHours(4);
+
+
    private SquadMember createMember(SquadRole role){
         SquadMember squadMember = new SquadMember();
         squadMember.setRole(role);
         return squadMember;
     }
+   private SquadMember createMember(SquadRole role,User user){
+        SquadMember squadMember = new SquadMember();
+        squadMember.setRole(role);
+        squadMember.setUser(user);
+        return squadMember;
+   }
 
    @Nested
    class leaveSquadTests {
@@ -222,6 +234,52 @@ class SquadServiceTest {
 
        }
    }
+
+   @Test
+   @DisplayName("getSquadCalendar: Should work without a problem")
+    void getSquadCalendar_userGetsTasks_success(){
+        SquadCalendarRequestDTO dto = new SquadCalendarRequestDTO(SQUAD_ID);
+
+        User owner = new User();
+        owner.setUserId(OWNER_ID);
+
+        User admin = new User();
+        admin.setUserId(ADMIN_ID);
+
+        User viewer = new User();
+        viewer.setUserId(VIEWER_ID);
+
+        SquadMember squadMember1 = createMember(SquadRole.OWNER,owner);
+        squadMember1.setVisibility(EventVisibility.PUBLIC);
+
+        SquadMember squadMember2 = createMember(SquadRole.ADMIN,admin);
+        squadMember2.setVisibility(EventVisibility.BUSY);
+
+        SquadMember squadMember3 = createMember(SquadRole.VIEWER,viewer);
+        squadMember3.setVisibility(EventVisibility.MUTED);
+
+        Task task1 = new Task(1L,"title","des",Time1,Time2,true,true);
+        Task task2 = new Task(2L,"title","des",Time1,Time2,true,false);
+        Task task3 = new Task(3L,"title","des",Time1,Time2,true,false);
+
+
+
+        when(userRepository.existsById(OWNER_ID)).thenReturn(true);
+        when(squadMembersRepository.existsBySquad_SquadIdAndUser_UserId(SQUAD_ID, OWNER_ID)).thenReturn(true);
+        when(squadMembersRepository.findAllBySquad_SquadId(SQUAD_ID)).thenReturn(List.of(squadMember1, squadMember2, squadMember3));
+
+        when(taskRepository.findTasksByUserId(OWNER_ID)).thenReturn(List.of(task1,task2));
+        when(taskRepository.findTasksByUserId(ADMIN_ID)).thenReturn(List.of(task2));
+        when(taskRepository.findTasksByUserId(VIEWER_ID)).thenReturn(List.of(task3,task2));
+
+        assertDoesNotThrow(() -> {
+            squadService.getSquadCalendar(dto, OWNER_ID);
+        });
+
+
+        verify(taskRepository, times(3)).findTasksByUserId(any());
+        verify(squadMembersRepository , times(1)).findAllBySquad_SquadId(SQUAD_ID);
+    }
 
 
 }

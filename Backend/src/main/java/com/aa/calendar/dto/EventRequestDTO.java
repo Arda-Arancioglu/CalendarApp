@@ -21,9 +21,10 @@ public record EventRequestDTO (
 
         Boolean isFlexible,
 
-        Set<Long> categoryIds
+        Set<Long> categoryIds,
 
-
+        @NotNull
+        Boolean isPrivate
 
 
 ){}
