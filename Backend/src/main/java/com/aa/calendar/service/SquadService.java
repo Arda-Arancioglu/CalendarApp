@@ -200,7 +200,15 @@ public class SquadService {
     }
 
 
-    // view The people on your squad by squad id :
+    @Transactional
+    public void updateMemberVisibility(UpdateVisibilityRequestDTO dto, Long userId){
+        SquadMember member = squadMembersRepository.findBySquad_SquadIdAndUser_UserId(dto.squadId(),userId)
+                .orElseThrow(()->new ResourceNotFoundException("Member not found in squad id: "+ dto.squadId() ));
+
+        member.setVisibility(dto.visibility());
+        squadMembersRepository.save(member);
+    }
+
 
     private List<SquadEventResponseDTO> mapToDTOEvent(List<Task> tasks , EventVisibility vis , Boolean isCaller) {
         List<SquadEventResponseDTO> squadEvents = new ArrayList<>();

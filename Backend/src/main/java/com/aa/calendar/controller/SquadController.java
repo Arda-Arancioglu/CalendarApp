@@ -76,4 +76,12 @@ public class SquadController {
         return ResponseEntity.ok(squadService.getSquadCalendar(dto,userId));
     }
 
+    @PutMapping("/visibility")
+    public ResponseEntity<Void> updateVisibility(@Valid @RequestBody UpdateVisibilityRequestDTO dto , Authentication authentication){
+            Long userId = (Long) authentication.getPrincipal();
+            squadService.updateMemberVisibility(dto,userId);
+            return  ResponseEntity.noContent().build();
+
+    }
+
 }
