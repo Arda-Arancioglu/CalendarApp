@@ -7,6 +7,7 @@ public record UpdateVisibilityRequestDTO(
 
         @NotNull(message="Visibility cannot be null")
         EventVisibility visibility,
+        @NotNull(message= "Squad Id cannot be null")
         Long squadId
 
 ) {

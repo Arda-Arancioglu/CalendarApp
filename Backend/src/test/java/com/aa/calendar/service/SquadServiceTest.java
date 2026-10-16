@@ -2,6 +2,8 @@ package com.aa.calendar.service;
 
 import com.aa.calendar.dto.SquadCalendarRequestDTO;
 import com.aa.calendar.dto.SquadKickRequestDTO;
+import com.aa.calendar.dto.UpdateRoleRequestDTO;
+import com.aa.calendar.dto.UpdateVisibilityRequestDTO;
 import com.aa.calendar.entity.*;
 import com.aa.calendar.exception.AccessDeniedException;
 import com.aa.calendar.repository.SquadMembersRepository;
@@ -11,6 +13,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -43,6 +47,9 @@ class SquadServiceTest {
    private static final Long OWNER_ID = 1L;
    private static final Long ADMIN_ID = 2L;
    private static final Long VIEWER_ID = 3L;
+   private static final Long CALLER_ID = 4L;
+   private static final Long TARGET_ID = 5L;
+
 
     private static final LocalDateTime Time1 = LocalDateTime.of(2026,10,13,14,0);
     private static final LocalDateTime Time2 = Time1.plusHours(4);
@@ -262,8 +269,6 @@ class SquadServiceTest {
         Task task2 = new Task(2L,"title","des",Time1,Time2,true,false);
         Task task3 = new Task(3L,"title","des",Time1,Time2,true,false);
 
-
-
         when(userRepository.existsById(OWNER_ID)).thenReturn(true);
         when(squadMembersRepository.existsBySquad_SquadIdAndUser_UserId(SQUAD_ID, OWNER_ID)).thenReturn(true);
         when(squadMembersRepository.findAllBySquad_SquadId(SQUAD_ID)).thenReturn(List.of(squadMember1, squadMember2, squadMember3));
@@ -276,10 +281,94 @@ class SquadServiceTest {
             squadService.getSquadCalendar(dto, OWNER_ID);
         });
 
-
         verify(taskRepository, times(3)).findTasksByUserId(any());
         verify(squadMembersRepository , times(1)).findAllBySquad_SquadId(SQUAD_ID);
     }
+
+
+    @Test
+    @DisplayName("updateMemberVisibility: Should  work without a problem")
+    void updateMemberVisibility(){
+       SquadMember squadMember1 = new SquadMember();
+
+        UpdateVisibilityRequestDTO dto = new UpdateVisibilityRequestDTO(
+                EventVisibility.PUBLIC,
+                SQUAD_ID
+        );
+
+       when(squadMembersRepository.findBySquad_SquadIdAndUser_UserId(SQUAD_ID, CALLER_ID))
+               .thenReturn(Optional.of(squadMember1));
+
+       assertDoesNotThrow(() -> {
+           squadService.updateMemberVisibility(dto, CALLER_ID);
+       });
+
+       verify(squadMembersRepository, times(1)).save(squadMember1);
+
+    }
+
+    @Nested
+    class updateMemberRoleTests {
+        @ParameterizedTest
+        @CsvSource({
+                "ADMIN,OWNER,ADMIN",
+                "ADMIN,ADMIN,ADMIN",
+                "ADMIN,ADMIN,VIEWER",
+                "ADMIN,VIEWER,OWNER",
+                "VIEWER,VIEWER,ADMIN",
+                "VIEWER,ADMIN,VIEWER"
+        })
+        @DisplayName("updateMemberRole: Should throw AccessDeniedException")
+        void updateMemberRole_unauthorizedCombinations_throwsAccessDeniedException(SquadRole callersRole, SquadRole targetsRole, SquadRole requestedRole) {
+
+            UpdateRoleRequestDTO dto = new UpdateRoleRequestDTO(requestedRole, SQUAD_ID, TARGET_ID);
+
+            SquadMember caller = createMember(callersRole);
+            SquadMember target = createMember(targetsRole);
+
+            when(squadMembersRepository.findBySquad_SquadIdAndUser_UserId(SQUAD_ID, CALLER_ID))
+                    .thenReturn(Optional.of(caller));
+            when(squadMembersRepository.findBySquad_SquadIdAndUser_UserId(SQUAD_ID, TARGET_ID))
+                    .thenReturn(Optional.of(target));
+            assertThrows(AccessDeniedException.class, () -> {
+                squadService.updateMemberRole(dto, CALLER_ID);
+            });
+
+            verify(squadMembersRepository, never()).save(any());
+
+
+        }
+
+        @ParameterizedTest
+        @CsvSource({
+                "OWNER,VIEWER,ADMIN",
+                "ADMIN,VIEWER,ADMIN",
+                "OWNER,ADMIN,OWNER",
+                "OWNER,VIEWER,OWNER",
+                "OWNER,ADMIN,VIEWER"
+        })
+        @DisplayName("updateMemberRole: Should throw AccessDeniedException")
+        void updateMemberRole_authorizedCombinations_shouldSucceed(SquadRole callersRole, SquadRole targetsRole, SquadRole requestedRole) {
+
+            UpdateRoleRequestDTO dto = new UpdateRoleRequestDTO(requestedRole, SQUAD_ID, TARGET_ID);
+
+            SquadMember caller = createMember(callersRole);
+            SquadMember target = createMember(targetsRole);
+
+            when(squadMembersRepository.findBySquad_SquadIdAndUser_UserId(SQUAD_ID, CALLER_ID))
+                    .thenReturn(Optional.of(caller));
+            when(squadMembersRepository.findBySquad_SquadIdAndUser_UserId(SQUAD_ID, TARGET_ID))
+                    .thenReturn(Optional.of(target));
+            assertDoesNotThrow(() -> {
+                squadService.updateMemberRole(dto, CALLER_ID);
+            });
+
+            verify(squadMembersRepository, times(1)).save(target);
+
+
+        }
+    }
+
 
 
 }

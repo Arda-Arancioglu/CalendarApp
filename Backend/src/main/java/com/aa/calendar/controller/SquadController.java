@@ -84,4 +84,11 @@ public class SquadController {
 
     }
 
+    @PutMapping("/role")
+    public ResponseEntity<Void> updateRole(@Valid @RequestBody UpdateRoleRequestDTO dto , Authentication authentication){
+        Long userId = (Long) authentication.getPrincipal();
+        squadService.updateMemberRole(dto,userId);
+        return  ResponseEntity.noContent().build();
+    }
+
 }

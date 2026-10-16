@@ -3,6 +3,7 @@ package com.aa.calendar.service;
 import com.aa.calendar.dto.*;
 import com.aa.calendar.entity.*;
 import com.aa.calendar.exception.AccessDeniedException;
+import com.aa.calendar.exception.BadRequestException;
 import com.aa.calendar.exception.ResourceNotFoundException;
 import com.aa.calendar.repository.*;
 import jakarta.transaction.Transactional;
@@ -209,6 +210,49 @@ public class SquadService {
         squadMembersRepository.save(member);
     }
 
+    @Transactional
+    public void updateMemberRole(UpdateRoleRequestDTO dto, Long userId){
+        if (Objects.equals(userId,dto.memberId())){
+            throw new AccessDeniedException("You cannot update your own squad role");
+        }
+
+        SquadMember userMember= squadMembersRepository.findBySquad_SquadIdAndUser_UserId( dto.squadId(),userId)
+                .orElseThrow(()-> new ResourceNotFoundException("You are not a member of squad id: "+ dto.squadId() ));
+        SquadMember dtoMember= squadMembersRepository.findBySquad_SquadIdAndUser_UserId( dto.squadId(),dto.memberId())
+                .orElseThrow(()-> new ResourceNotFoundException("User with id :"+dto.memberId()+ " are not a member of squad id: "+ dto.squadId() ));
+
+
+
+
+        if ((userMember.getRole() == SquadRole.OWNER) && (dto.role() == SquadRole.OWNER)){
+            userMember.setRole(SquadRole.ADMIN);
+            dtoMember.setRole(SquadRole.OWNER);
+        }
+        else if (userMember.getRole() == SquadRole.OWNER){
+            dtoMember.setRole(dto.role());
+        }
+        else if(userMember.getRole() == SquadRole.ADMIN ){
+            if(dtoMember.getRole() == SquadRole.OWNER || dtoMember.getRole() == SquadRole.ADMIN){
+                throw new AccessDeniedException("You cannot update ADMINS or an OWNER squad role");
+            }
+            else if(dto.role() == SquadRole.OWNER){
+                throw new  AccessDeniedException("You cannot give OWNER role");
+            }
+            else if(dto.role() == SquadRole.ADMIN ){
+                dtoMember.setRole(SquadRole.ADMIN);
+            }
+            else if(dto.role() == SquadRole.VIEWER){
+                throw new BadRequestException("The member is already a VIEWER role");
+            }
+        }
+        else {
+            throw new  AccessDeniedException("You cannot change a role");
+        }
+
+        squadMembersRepository.save(userMember);
+        squadMembersRepository.save(dtoMember);
+
+    }
 
     private List<SquadEventResponseDTO> mapToDTOEvent(List<Task> tasks , EventVisibility vis , Boolean isCaller) {
         List<SquadEventResponseDTO> squadEvents = new ArrayList<>();
