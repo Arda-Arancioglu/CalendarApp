@@ -22,4 +22,5 @@ public interface SquadMembersRepository extends JpaRepository<SquadMember,Long> 
     Optional<SquadMember> findBySquad_SquadIdAndUser_UserId(Long id, Long userId);
 
     void deleteAllBySquad_SquadId(Long squadId);
+
 }

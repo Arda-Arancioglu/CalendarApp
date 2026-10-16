@@ -9,6 +9,7 @@ import com.aa.calendar.exception.AccessDeniedException;
 import com.aa.calendar.repository.SquadMembersRepository;
 import com.aa.calendar.repository.TaskRepository;
 import com.aa.calendar.repository.UserRepository;
+import com.aa.calendar.repository.UserTasksRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,8 @@ class SquadServiceTest {
    @Mock
    private  UserRepository userRepository;
 
+   @Mock
+   private UserTasksRepository userTasksRepository;
 
    @Mock
    private TaskRepository taskRepository;
@@ -265,23 +268,35 @@ class SquadServiceTest {
         SquadMember squadMember3 = createMember(SquadRole.VIEWER,viewer);
         squadMember3.setVisibility(EventVisibility.MUTED);
 
+
         Task task1 = new Task(1L,"title","des",Time1,Time2,true,true);
         Task task2 = new Task(2L,"title","des",Time1,Time2,true,false);
         Task task3 = new Task(3L,"title","des",Time1,Time2,true,false);
+
+
+       UserTasks ut1 = new UserTasks();
+       ut1.setUser(owner);
+       ut1.setTask(task1);
+
+       UserTasks ut2 = new UserTasks();
+       ut2.setUser(admin);
+       ut2.setTask(task2);
+
+       UserTasks ut3 = new UserTasks();
+       ut3.setUser(viewer);
+       ut3.setTask(task3);
 
         when(userRepository.existsById(OWNER_ID)).thenReturn(true);
         when(squadMembersRepository.existsBySquad_SquadIdAndUser_UserId(SQUAD_ID, OWNER_ID)).thenReturn(true);
         when(squadMembersRepository.findAllBySquad_SquadId(SQUAD_ID)).thenReturn(List.of(squadMember1, squadMember2, squadMember3));
 
-        when(taskRepository.findTasksByUserIdAndDateRange(OWNER_ID,Time1,Time2)).thenReturn(List.of(task1,task2));
-        when(taskRepository.findTasksByUserIdAndDateRange(ADMIN_ID,Time1,Time2)).thenReturn(List.of(task2));
-        when(taskRepository.findTasksByUserIdAndDateRange(VIEWER_ID,Time1,Time2)).thenReturn(List.of(task3,task2));
+        when(userTasksRepository.findTasksByUserIdsAndDateRange(any(),eq(Time1),eq(Time2))).thenReturn(List.of(ut1,ut2,ut3));
 
         assertDoesNotThrow(() -> {
             squadService.getSquadCalendar(dto, OWNER_ID);
         });
 
-        verify(taskRepository, times(3)).findTasksByUserIdAndDateRange(any(),any(),any());
+        verify(userTasksRepository, times(1)).findTasksByUserIdsAndDateRange(any(),any(),any());
         verify(squadMembersRepository , times(1)).findAllBySquad_SquadId(SQUAD_ID);
     }
 
