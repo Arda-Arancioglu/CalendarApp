@@ -245,7 +245,7 @@ class SquadServiceTest {
    @Test
    @DisplayName("getSquadCalendar: Should work without a problem")
     void getSquadCalendar_userGetsTasks_success(){
-        SquadCalendarRequestDTO dto = new SquadCalendarRequestDTO(SQUAD_ID);
+        SquadCalendarRequestDTO dto = new SquadCalendarRequestDTO(SQUAD_ID,Time1,Time2);
 
         User owner = new User();
         owner.setUserId(OWNER_ID);
@@ -273,15 +273,15 @@ class SquadServiceTest {
         when(squadMembersRepository.existsBySquad_SquadIdAndUser_UserId(SQUAD_ID, OWNER_ID)).thenReturn(true);
         when(squadMembersRepository.findAllBySquad_SquadId(SQUAD_ID)).thenReturn(List.of(squadMember1, squadMember2, squadMember3));
 
-        when(taskRepository.findTasksByUserId(OWNER_ID)).thenReturn(List.of(task1,task2));
-        when(taskRepository.findTasksByUserId(ADMIN_ID)).thenReturn(List.of(task2));
-        when(taskRepository.findTasksByUserId(VIEWER_ID)).thenReturn(List.of(task3,task2));
+        when(taskRepository.findTasksByUserIdAndDateRange(OWNER_ID,Time1,Time2)).thenReturn(List.of(task1,task2));
+        when(taskRepository.findTasksByUserIdAndDateRange(ADMIN_ID,Time1,Time2)).thenReturn(List.of(task2));
+        when(taskRepository.findTasksByUserIdAndDateRange(VIEWER_ID,Time1,Time2)).thenReturn(List.of(task3,task2));
 
         assertDoesNotThrow(() -> {
             squadService.getSquadCalendar(dto, OWNER_ID);
         });
 
-        verify(taskRepository, times(3)).findTasksByUserId(any());
+        verify(taskRepository, times(3)).findTasksByUserIdAndDateRange(any(),any(),any());
         verify(squadMembersRepository , times(1)).findAllBySquad_SquadId(SQUAD_ID);
     }
 

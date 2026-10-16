@@ -97,20 +97,19 @@ public class SquadService {
         User user = userRepository.findById(userId)
                 .orElseThrow(()-> new ResourceNotFoundException("User not found with id : " + userId));
 
+        Squad squad = squadRepository.findByInviteCode(dto.inviteCode())
+                .orElseThrow(()-> new ResourceNotFoundException("Squad not found with given invite code : " + dto.inviteCode()));
 
-            Squad squad = squadRepository.findByInviteCode(dto.inviteCode())
-                    .orElseThrow(()-> new ResourceNotFoundException("Squad not found with given invite code : " + dto.inviteCode()));
-
-            if(squadMembersRepository.existsBySquad_SquadIdAndUser_UserId(squad.getSquadId(), userId)){
-               throw new IllegalArgumentException("You are already in this squad");
-            }
-            SquadMember member = new SquadMember();
-            member.setSquad(squad);
-            member.setUser(user);
-            member.setRole(SquadRole.VIEWER);
-            member.setJoinedAt(LocalDateTime.now());
-            squadMembersRepository.save(member);
-            return mapToDTO(squad);
+        if(squadMembersRepository.existsBySquad_SquadIdAndUser_UserId(squad.getSquadId(), userId)){
+           throw new IllegalArgumentException("You are already in this squad");
+        }
+        SquadMember member = new SquadMember();
+        member.setSquad(squad);
+        member.setUser(user);
+        member.setRole(SquadRole.VIEWER);
+        member.setJoinedAt(LocalDateTime.now());
+        squadMembersRepository.save(member);
+        return mapToDTO(squad);
     }
 
     public List<SquadSummaryResponseDTO> getAllSquads(Long userId) {
@@ -307,9 +306,11 @@ public class SquadService {
 
     public List<SquadCalendarResponseDTO> getSquadCalendar(SquadCalendarRequestDTO dto, Long userId) {
 
-        if(!userRepository.existsById(userId) || !squadMembersRepository.existsBySquad_SquadIdAndUser_UserId(dto.squadId(),userId)){
-           throw new ResourceNotFoundException("User not found with id : " + userId + " in the given squad id: "+ dto.squadId()) ;
+       if(!userRepository.existsById(userId) || !squadMembersRepository.existsBySquad_SquadIdAndUser_UserId(dto.squadId(),userId)){
+           throw new ResourceNotFoundException("User not found with id : " + userId + " in the given squad id: " + dto.squadId()) ;
        }
+
+
 
        List<SquadMember> members = squadMembersRepository.findAllBySquad_SquadId(dto.squadId());
        List<SquadCalendarResponseDTO> response = new ArrayList<>();
@@ -320,7 +321,7 @@ public class SquadService {
 
            boolean isCaller = memberId.equals(userId);
 
-           List <Task> tasks = taskRepository.findTasksByUserId(memberId);
+           List <Task> tasks = taskRepository.findTasksByUserIdAndDateRange(memberId,dto.startTime(),dto.endTime());
 
            List<SquadEventResponseDTO> events =  mapToDTOEvent(tasks,memberVis, isCaller);
            SquadCalendarResponseDTO responseDTO = new SquadCalendarResponseDTO(memberId,events);
