@@ -62,8 +62,3 @@ export async function deleteEvent(eventId: number): Promise<EventResponseDTO> {
   const raw = await request<RawEventDTO>(`/events/${eventId}`, { method: 'DELETE' });
   return normalizeEvent(raw);
 }
-
-/** DANGER: deletes ALL of the current user's events. 204 No Content. */
-export function deleteAllEvents(): Promise<void> {
-  return request<void>('/events', { method: 'DELETE' });
-}

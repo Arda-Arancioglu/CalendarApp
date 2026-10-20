@@ -18,6 +18,10 @@ export const HEX_COLOR_REGEX = /^#[A-Fa-f0-9]{6}$/;
 export const EVENT_TITLE_MAX = 100;
 export const EVENT_DESCRIPTION_MAX = 255;
 
+export const SQUAD_NAME_MAX = 100;
+export const SQUAD_DESCRIPTION_MAX = 255;
+export const INVITE_CODE_LENGTH = 8;
+
 /**
  * Password rules, also used to render the live checklist on the register page.
  * ASSUMPTION: "special character" = anything that is not a letter, digit or space.
@@ -141,3 +145,29 @@ export const eventSchema = z
     },
   );
 export type EventFormValues = z.infer<typeof eventSchema>;
+
+// ---- Squad schemas ----
+
+export const createSquadSchema = z.object({
+  squadName: z
+    .string()
+    .trim()
+    .min(1, 'Squad name is required')
+    .max(SQUAD_NAME_MAX, `Squad name must be at most ${SQUAD_NAME_MAX} characters`),
+  squadDescription: z
+    .string()
+    .max(
+      SQUAD_DESCRIPTION_MAX,
+      `Description must be at most ${SQUAD_DESCRIPTION_MAX} characters`,
+    ),
+});
+export type CreateSquadFormValues = z.infer<typeof createSquadSchema>;
+
+export const joinSquadSchema = z.object({
+  inviteCode: z
+    .string()
+    .trim()
+    .min(1, 'Invite code is required')
+    .length(INVITE_CODE_LENGTH, `Invite code must be ${INVITE_CODE_LENGTH} characters`),
+});
+export type JoinSquadFormValues = z.infer<typeof joinSquadSchema>;

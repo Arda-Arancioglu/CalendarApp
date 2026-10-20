@@ -85,18 +85,3 @@ export function useDeleteEvent() {
     },
   });
 }
-
-/**
- * Delete ALL of the current user's events (`DELETE /api/events`).
- * Used only in Settings behind a type-to-confirm dialog.
- */
-export function useDeleteAllEvents() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => eventsApi.deleteAllEvents(),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.squads.all });
-    },
-  });
-}

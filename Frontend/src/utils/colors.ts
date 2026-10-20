@@ -25,6 +25,31 @@ export const CATEGORY_COLOR_PRESETS: readonly { hex: string; name: string }[] = 
 ];
 
 /**
+ * Distinct color palette assigned to squad members in the squad calendar.
+ */
+export const SQUAD_MEMBER_PALETTE: readonly string[] = [
+  '#6366F1', // Indigo
+  '#10B981', // Emerald
+  '#F59E0B', // Amber
+  '#EC4899', // Pink
+  '#06B6D4', // Cyan
+  '#A855F7', // Purple
+  '#F97316', // Orange
+  '#3B82F6', // Blue
+  '#84CC16', // Lime
+  '#14B8A6', // Teal
+];
+
+/**
+ * Returns a consistent color for a member based on their position in the member list
+ * (with fallback to their `userId`).
+ */
+export function getMemberColor(index: number, userId: number): string {
+  const paletteIndex = (index >= 0 ? index : Math.abs(userId)) % SQUAD_MEMBER_PALETTE.length;
+  return SQUAD_MEMBER_PALETTE[paletteIndex] ?? DEFAULT_EVENT_COLOR;
+}
+
+/**
  * Returns a valid 6-digit hex color, falling back to DEFAULT_EVENT_COLOR if malformed.
  */
 export function normalizeHexColor(color: string | undefined | null): string {
