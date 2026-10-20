@@ -3,6 +3,9 @@ HELP.md
 WhatToDoNext.md
 *.env
 *.env.*
+!.env.example
+!Backend/.env.example
+!Frontend/.env.example
 
 ### Backend ###
 Backend/.env
@@ -12,6 +15,11 @@ Backend/.mvn/wrapper/maven-wrapper.jar
 !**/src/test/**/target/
 
 ### Frontend (Node / Vite / React) ###
+Frontend/dist-ssr/
+Frontend/coverage/
+Frontend/.vite/
+*.tsbuildinfo
+pnpm-debug.log*
 Frontend/node_modules/
 Frontend/dist/
 Frontend/.env

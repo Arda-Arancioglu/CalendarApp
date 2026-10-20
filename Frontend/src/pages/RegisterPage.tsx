@@ -1,156 +1,138 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { Calendar, UserPlus, AlertCircle } from 'lucide-react';
-import { Input } from '../components/ui/Input';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useForm, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { subDays } from 'date-fns';
+import { Check, Circle, UserPlus } from 'lucide-react';
+import { AuthLayout } from '../components/auth/AuthLayout';
+import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
+import { Input, PasswordInput } from '../components/ui/Input';
+import { useAuth } from '../hooks/useAuth';
+import { applyFieldErrors, getErrorMessage } from '../utils/errors';
+import { toApiDate } from '../utils/date';
+import { PASSWORD_RULES, registerSchema, type RegisterFormValues } from '../utils/validation';
+import { cn } from '../utils/cn';
 
-export const RegisterPage: React.FC = () => {
-  const { register } = useAuth();
-  const navigate = useNavigate();
+/** Live checklist under the password field. */
+function PasswordChecklist({ password }: { password: string }) {
+  return (
+    <ul className="mt-1 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2" aria-label="Password requirements">
+      {PASSWORD_RULES.map((rule) => {
+        const passed = rule.test(password);
+        return (
+          <li
+            key={rule.id}
+            className={cn('flex items-center gap-1.5 transition-colors', passed ? 'text-emerald-300' : 'text-zinc-500')}
+          >
+            {passed ? (
+              <Check className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : (
+              <Circle className="h-3 w-3" aria-hidden="true" />
+            )}
+            <span>
+              {rule.label}
+              <span className="sr-only">{passed ? ' (done)' : ' (missing)'}</span>
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [birthDate, setBirthDate] = useState('');
-  const [errors, setErrors] = useState<{
-    username?: string;
-    password?: string;
-    birthDate?: string;
-    general?: string;
-  }>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export function RegisterPage() {
+  const { register: registerAccount } = useAuth();
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const validate = () => {
-    const newErrors: { username?: string; password?: string; birthDate?: string } = {};
+  const {
+    register,
+    handleSubmit,
+    setError,
+    control,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { username: '', password: '', confirmPassword: '', birthDate: '' },
+  });
 
-    if (!username.trim()) {
-      newErrors.username = 'Username is required';
-    } else if (username.length < 3) {
-      newErrors.username = 'Username must be at least 3 characters';
-    }
+  // useWatch re-renders only this component when the password changes.
+  const password = useWatch({ control, name: 'password' });
+  // The latest selectable birth date is yesterday ("must be in the past").
+  const [maxBirthDate] = useState(() => toApiDate(subDays(new Date(), 1)));
 
-    if (!password) {
-      newErrors.password = 'Password is required';
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    if (!birthDate) {
-      newErrors.birthDate = 'Birth date is required (YYYY-MM-DD)';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    setIsSubmitting(true);
-    setErrors({});
-
+  const onSubmit = async (values: RegisterFormValues) => {
+    setFormError(null);
     try {
-      await register({ username, password, birthDate });
-      navigate('/calendar');
-    } catch (err: any) {
-      const serverMessage =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        'Registration failed. Username may already be taken.';
-      setErrors({ general: serverMessage });
-    } finally {
-      setIsSubmitting(false);
+      // confirmPassword is only for the form; the API doesn't know about it.
+      await registerAccount({
+        username: values.username,
+        password: values.password,
+        birthDate: values.birthDate,
+      });
+    } catch (error) {
+      // e.g. 409 "Username already taken" or a 400 with field errors
+      const mappedToFields = applyFieldErrors(error, setError, ['username', 'password', 'birthDate']);
+      if (!mappedToFields) setFormError(getErrorMessage(error));
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#090A0F] flex flex-col items-center justify-center p-4">
-      {/* Background Subtle Accent Grid */}
-      <div className="absolute inset-0 bg-[radial-gradient(#1A1D2D_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none" />
-
-      <div className="relative w-full max-w-md bg-[#11131F] border border-[#272A3D] rounded-md shadow-2xl p-6 sm:p-8 space-y-6">
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center p-2.5 bg-indigo-600/10 border border-indigo-500/30 rounded-sm mb-1">
-            <Calendar className="w-6 h-6 text-indigo-400" />
-          </div>
-          <h1 className="text-xl font-bold text-zinc-100 tracking-tight">Create Account</h1>
-          <p className="text-xs text-zinc-400">Register a new user account for EventFlow</p>
-        </div>
-
-        {/* Tab Switcher */}
-        <div className="grid grid-cols-2 p-1 bg-[#090A0F] border border-[#272A3D] rounded-sm text-xs font-semibold">
-          <Link
-            to="/login"
-            className="py-2 text-center text-zinc-400 hover:text-zinc-200 transition-colors flex items-center justify-center"
-          >
-            Sign In
+    <AuthLayout
+      title="Create your account"
+      subtitle="It takes less than a minute."
+      footer={
+        <>
+          Already have an account?{' '}
+          <Link to="/login" className="font-medium text-indigo-300 hover:text-indigo-200 hover:underline">
+            Log in
           </Link>
-          <button className="py-2 text-center text-zinc-100 bg-[#161828] border border-[#272A3D] rounded-xs shadow-xs">
-            Register
-          </button>
-        </div>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
+        {formError && <Alert variant="error">{formError}</Alert>}
 
-        {/* General Error Banner */}
-        {errors.general && (
-          <div className="p-3 bg-red-950/50 border border-red-800/60 rounded-xs flex items-start gap-2 text-xs text-red-300">
-            <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-            <span>{errors.general}</span>
-          </div>
-        )}
+        <Input
+          label="Username"
+          autoComplete="username"
+          autoFocus
+          helperText="3–20 characters"
+          error={errors.username?.message}
+          {...register('username')}
+        />
+        <PasswordInput
+          label="Password"
+          autoComplete="new-password"
+          error={errors.password?.message}
+          helperText={<PasswordChecklist password={password} />}
+          {...register('password')}
+        />
+        <PasswordInput
+          label="Confirm password"
+          autoComplete="new-password"
+          error={errors.confirmPassword?.message}
+          {...register('confirmPassword')}
+        />
+        <Input
+          label="Birth date"
+          type="date"
+          max={maxBirthDate}
+          error={errors.birthDate?.message}
+          {...register('birthDate')}
+        />
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          <div>
-            <Input
-              label="Username"
-              type="text"
-              placeholder="Choose username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              error={errors.username}
-              autoComplete="username"
-              required
-            />
-          </div>
-
-          <div>
-            <Input
-              label="Password"
-              type="password"
-              placeholder="At least 6 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              error={errors.password}
-              autoComplete="new-password"
-              required
-            />
-          </div>
-
-          <div>
-            <Input
-              label="Birth Date"
-              type="date"
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-              error={errors.birthDate}
-              helperText="Required format: YYYY-MM-DD"
-              required
-            />
-          </div>
-
-          <Button type="submit" variant="primary" size="md" className="w-full mt-2" isLoading={isSubmitting}>
-            <UserPlus className="w-4 h-4 mr-1" />
-            Create Account & Enter
-          </Button>
-        </form>
-
-        {/* Footer info */}
-        <div className="text-center text-[11px] text-zinc-500 border-t border-[#272A3D] pt-4">
-          Spring Boot Backend target: <span className="font-mono text-zinc-400">http://localhost:8080/api</span>
-        </div>
-      </div>
-    </div>
+        <Button
+          type="submit"
+          fullWidth
+          size="lg"
+          isLoading={isSubmitting}
+          loadingText="Creating account…"
+          leftIcon={<UserPlus className="h-4 w-4" aria-hidden="true" />}
+        >
+          Create account
+        </Button>
+      </form>
+    </AuthLayout>
   );
-};
+}

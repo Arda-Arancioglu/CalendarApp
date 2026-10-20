@@ -1,20 +1,20 @@
-export interface User {
-  userId: number;
-  username: string;
-}
+import type { ApiDate } from './api';
 
-export interface LoginCredentials {
+/** POST /api/auth/login */
+export interface LoginRequestDTO {
   username: string;
   password: string;
 }
 
-export interface RegisterCredentials {
+/** POST /api/auth/register */
+export interface RegisterRequestDTO {
   username: string;
   password: string;
-  birthDate: string; // Format: "YYYY-MM-DD"
+  birthDate: ApiDate;
 }
 
-export interface AuthResponse {
+/** Response of both login and register. */
+export interface AuthResponseDTO {
   token: string;
   userId: number;
   username: string;

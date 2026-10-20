@@ -1,15 +1,25 @@
-export interface CalendarEvent {
-  id: number;
+import type { ApiDateTime } from './api';
+import type { CategoryResponseDTO } from './category';
+
+/** Response of the /api/events endpoints. */
+export interface EventResponseDTO {
+  eventId: number;
   title: string;
-  description: string;
-  startTime: string; // ISOString e.g. "2026-09-30T10:00:00.000Z"
-  endTime: string;   // ISOString e.g. "2026-09-30T11:00:00.000Z"
-  creatorId: number;
+  description: string | null;
+  startTime: ApiDateTime;
+  endTime: ApiDateTime;
+  isFlexible: boolean;
+  categories: CategoryResponseDTO[];
+  isPrivate: boolean;
 }
 
-export interface CreateEventPayload {
+/** Body of POST /api/events and PUT /api/events/{id} (PUT always sends the full body). */
+export interface EventRequestDTO {
   title: string;
-  description: string;
-  startTime: string; // ISOString
-  endTime: string;   // ISOString
+  description?: string;
+  startTime: ApiDateTime;
+  endTime: ApiDateTime;
+  isFlexible?: boolean;
+  categoryIds: number[];
+  isPrivate: boolean;
 }

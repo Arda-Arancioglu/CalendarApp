@@ -1,60 +1,72 @@
-import React, { type ButtonHTMLAttributes } from 'react';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { cn } from '../../utils/cn';
+import { Spinner } from './Spinner';
+
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  /** Shows a spinner and disables the button (use while a request is pending). */
   isLoading?: boolean;
+  loadingText?: string;
+  leftIcon?: ReactNode;
+  fullWidth?: boolean;
 }
 
-export const Button: React.FC<ButtonProps> = ({
-  children,
-  variant = 'primary',
-  size = 'md',
-  isLoading = false,
-  className,
-  disabled,
-  ...props
-}) => {
-  const baseStyles =
-    'inline-flex items-center justify-center font-medium transition-colors focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-sm disabled:opacity-50 disabled:cursor-not-allowed select-none';
+const variantClasses: Record<ButtonVariant, string> = {
+  primary:
+    'bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-950/40 hover:from-indigo-400 hover:to-indigo-500 border border-indigo-400/30',
+  secondary:
+    'bg-dark-elevated text-zinc-100 border border-dark-border hover:bg-dark-hover hover:border-zinc-600',
+  ghost: 'bg-transparent text-zinc-300 hover:bg-dark-hover hover:text-zinc-100',
+  danger:
+    'bg-red-600/90 text-white border border-red-400/30 hover:bg-red-500 shadow-lg shadow-red-950/40',
+};
 
-  const variants = {
-    primary: 'bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500/50 shadow-sm',
-    secondary: 'bg-[#1A1D2D] hover:bg-[#222638] text-zinc-200 border border-[#272A3D]',
-    outline: 'bg-transparent hover:bg-[#1A1D2D] text-zinc-300 border border-[#272A3D]',
-    danger: 'bg-red-600/90 hover:bg-red-600 text-white border border-red-500/50 shadow-sm',
-    ghost: 'bg-transparent hover:bg-[#1A1D2D] text-zinc-400 hover:text-zinc-200',
-  };
+const sizeClasses: Record<ButtonSize, string> = {
+  sm: 'h-8 px-3 text-xs gap-1.5',
+  md: 'h-10 px-4 text-sm gap-2',
+  lg: 'h-11 px-5 text-sm gap-2',
+};
 
-  const sizes = {
-    sm: 'text-xs px-2.5 py-1.5 gap-1.5',
-    md: 'text-sm px-3.5 py-2 gap-2',
-    lg: 'text-base px-5 py-2.5 gap-2.5',
-  };
-
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    variant = 'primary',
+    size = 'md',
+    isLoading = false,
+    loadingText,
+    leftIcon,
+    fullWidth = false,
+    disabled,
+    className,
+    children,
+    // Default to "button" so a button inside a form never submits it by accident.
+    type = 'button',
+    ...props
+  },
+  ref,
+) {
   return (
     <button
-      className={twMerge(clsx(baseStyles, variants[variant], sizes[size], className))}
+      ref={ref}
+      type={type}
       disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
+      className={cn(
+        'inline-flex select-none items-center justify-center rounded-lg font-medium transition-all duration-150',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-bg',
+        'active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50',
+        variantClasses[variant],
+        sizeClasses[size],
+        fullWidth && 'w-full',
+        className,
+      )}
       {...props}
     >
-      {isLoading ? (
-        <span className="flex items-center gap-2">
-          <svg className="animate-spin h-4 w-4 text-current" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            />
-          </svg>
-          <span>Loading...</span>
-        </span>
-      ) : (
-        children
-      )}
+      {isLoading ? <Spinner size="sm" /> : leftIcon}
+      {isLoading && loadingText ? loadingText : children}
     </button>
   );
-};
+});
