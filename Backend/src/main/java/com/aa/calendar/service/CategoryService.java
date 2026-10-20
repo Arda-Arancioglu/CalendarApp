@@ -54,6 +54,13 @@ public class CategoryService {
     public CategoryResponseDTO update(Long categoryId, CategoryRequestDTO dto, Long userId) {
         Category category = categoryRepository.findByCategoryIdAndUser_UserId(categoryId, userId )
                 .orElseThrow(()-> new ResourceNotFoundException("Category not found with id: " + categoryId));
+        if(categoryRepository.existsByNameIgnoreCaseAndUser_UserId(dto.name().trim(), userId)) {
+
+            Category existing = categoryRepository.findByNameIgnoreCaseAndUser_UserId(dto.name().trim(), userId).orElse(null);
+            if (existing != null && !existing.getCategoryId().equals(categoryId)) {
+                throw new BadRequestException("Category with name " + dto.name() + " already exists");
+            }
+        }
         category.setName(dto.name());
         category.setColor(dto.color());
         return mapToDTO(categoryRepository.save(category));

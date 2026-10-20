@@ -320,6 +320,7 @@ public class SquadService {
         return squadEvents;
     }
 
+    @Transactional
     public List<SquadCalendarResponseDTO> getSquadCalendar(Long squadId , LocalDateTime startTime , LocalDateTime endTime , Long userId) {
 
        if(!userRepository.existsById(userId) || !squadMembersRepository.existsBySquad_SquadIdAndUser_UserId(squadId,userId)){
