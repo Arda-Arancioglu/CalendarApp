@@ -83,7 +83,6 @@ const ENVELOPE_KEYS = new Set([
   'errors',
   'fieldErrors',
   'detail',
-  'title',
   'type',
   'instance',
   'trace',
