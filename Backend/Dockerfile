@@ -5,15 +5,11 @@ WORKDIR /app
 # Copy project files
 COPY . .
 
-# Build the jar (skipping tests to speed up deployment)
-RUN ./mvnw clean package -DskipTests
+# Grant execution permission to mvnw, then build the jar
+RUN chmod +x mvnw && ./mvnw clean package -DskipTests
 
 # Stage 2: Run the application with minimal JRE image
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-
-# Copy the built jar from stage 1
 COPY --from=build /app/target/*.jar app.jar
-
-# Run with tuned JVM arguments for Render's 512MB limit
 ENTRYPOINT ["java", "-Xmx350m", "-XX:+UseContainerSupport", "-XX:+UseSerialGC", "-jar", "app.jar"]
