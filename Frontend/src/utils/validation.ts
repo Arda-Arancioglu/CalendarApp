@@ -1,6 +1,6 @@
 import { isValid, startOfToday } from 'date-fns';
 import { z } from 'zod';
-import { fromApiDate } from './date';
+import { fromApiDate, fromInputDateTime } from './date';
 
 /**
  * Zod schemas that mirror the server's validation rules, so users get instant
@@ -11,6 +11,12 @@ export const USERNAME_MIN = 3;
 export const USERNAME_MAX = 20;
 export const PASSWORD_MIN = 8;
 export const PASSWORD_MAX = 32;
+
+export const CATEGORY_NAME_MAX = 50;
+export const HEX_COLOR_REGEX = /^#[A-Fa-f0-9]{6}$/;
+
+export const EVENT_TITLE_MAX = 100;
+export const EVENT_DESCRIPTION_MAX = 255;
 
 /**
  * Password rules, also used to render the live checklist on the register page.
@@ -80,3 +86,58 @@ export const registerSchema = z
     path: ['confirmPassword'],
   });
 export type RegisterFormValues = z.infer<typeof registerSchema>;
+
+// ---- Category schema ----
+
+export const categorySchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Category name is required')
+    .max(CATEGORY_NAME_MAX, `Category name must be at most ${CATEGORY_NAME_MAX} characters`),
+  color: z
+    .string()
+    .trim()
+    .regex(HEX_COLOR_REGEX, 'Color must be a 6-digit hex code like #6366F1'),
+});
+export type CategoryFormValues = z.infer<typeof categorySchema>;
+
+// ---- Event schema ----
+
+export const eventSchema = z
+  .object({
+    title: z
+      .string()
+      .trim()
+      .min(1, 'Title is required')
+      .max(EVENT_TITLE_MAX, `Title must be at most ${EVENT_TITLE_MAX} characters`),
+    description: z
+      .string()
+      .max(
+        EVENT_DESCRIPTION_MAX,
+        `Description must be at most ${EVENT_DESCRIPTION_MAX} characters`,
+      ),
+    startTime: z
+      .string()
+      .min(1, 'Start time is required')
+      .refine((val) => isValid(fromInputDateTime(val)), 'Enter a valid start date and time'),
+    endTime: z
+      .string()
+      .min(1, 'End time is required')
+      .refine((val) => isValid(fromInputDateTime(val)), 'Enter a valid end date and time'),
+    isFlexible: z.boolean(),
+    isPrivate: z.boolean(),
+    categoryIds: z.array(z.number()),
+  })
+  .refine(
+    (values) => {
+      const start = fromInputDateTime(values.startTime);
+      const end = fromInputDateTime(values.endTime);
+      return isValid(start) && isValid(end) && end.getTime() > start.getTime();
+    },
+    {
+      message: 'End time must be after start time',
+      path: ['endTime'],
+    },
+  );
+export type EventFormValues = z.infer<typeof eventSchema>;

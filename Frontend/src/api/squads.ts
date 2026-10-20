@@ -65,8 +65,9 @@ export function changeVisibility(body: ChangeVisibilityRequestDTO): Promise<void
 }
 
 /**
- * Combined calendar of all members for a range. The server defaults to the
- * current month, but we always send the visible range.
+ * Combined calendar of all members for a range.
+ * Sends both `start`/`end` (from the brief) and `startTime`/`endTime` (used in
+ * `SquadController.java`) so either backend signature works seamlessly.
  */
 export function getSquadCalendar(
   squadId: number,
@@ -74,7 +75,12 @@ export function getSquadCalendar(
   signal?: AbortSignal,
 ): Promise<SquadCalendarMemberDTO[]> {
   return request<SquadCalendarMemberDTO[]>(`/squad/${squadId}/calendar`, {
-    query: { start: range.start, end: range.end },
+    query: {
+      start: range.start,
+      end: range.end,
+      startTime: range.start,
+      endTime: range.end,
+    },
     signal,
   });
 }
