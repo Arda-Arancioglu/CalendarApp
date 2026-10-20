@@ -135,7 +135,7 @@ public class SquadService {
             throw new ResourceNotFoundException("User not found with id : " + userId);
         }
 
-        SquadMember squadMemberUser = squadMembersRepository.findBySquad_SquadIdAndUser_UserId(userId, squadId)
+        SquadMember squadMemberUser = squadMembersRepository.findBySquad_SquadIdAndUser_UserId(squadId,userId)
                 .orElseThrow(()-> new ResourceNotFoundException("Squad not found with id : " + squadId));
 
 
@@ -161,6 +161,9 @@ public class SquadService {
                 memberList
         );
     }
+
+
+    // we need update squad in here?
 
     @Transactional
     public void leaveSquad(Long userId, Long squadId) {
