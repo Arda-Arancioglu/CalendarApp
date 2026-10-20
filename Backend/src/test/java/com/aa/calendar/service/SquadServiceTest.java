@@ -1,6 +1,5 @@
 package com.aa.calendar.service;
 
-import com.aa.calendar.dto.SquadCalendarRequestDTO;
 import com.aa.calendar.dto.SquadKickRequestDTO;
 import com.aa.calendar.dto.UpdateRoleRequestDTO;
 import com.aa.calendar.dto.UpdateVisibilityRequestDTO;
@@ -248,8 +247,6 @@ class SquadServiceTest {
    @Test
    @DisplayName("getSquadCalendar: Should work without a problem")
     void getSquadCalendar_userGetsTasks_success(){
-        SquadCalendarRequestDTO dto = new SquadCalendarRequestDTO(SQUAD_ID,Time1,Time2);
-
         User owner = new User();
         owner.setUserId(OWNER_ID);
 
@@ -293,7 +290,7 @@ class SquadServiceTest {
         when(userTasksRepository.findTasksByUserIdsAndDateRange(any(),eq(Time1),eq(Time2))).thenReturn(List.of(ut1,ut2,ut3));
 
         assertDoesNotThrow(() -> {
-            squadService.getSquadCalendar(dto, OWNER_ID);
+            squadService.getSquadCalendar(SQUAD_ID,Time1 , Time2, OWNER_ID);
         });
 
         verify(userTasksRepository, times(1)).findTasksByUserIdsAndDateRange(any(),any(),any());

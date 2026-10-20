@@ -53,6 +53,7 @@ public class SquadService {
                squadMember.getSquad().getSquadId(),
                squadMember.getSquad().getSquadName(),
                squadMember.getSquad().getSquadDescription(),
+               squadMember.getVisibility(),
                squadMember.getRole()
        );
     }
@@ -134,9 +135,9 @@ public class SquadService {
             throw new ResourceNotFoundException("User not found with id : " + userId);
         }
 
-        if(!squadMembersRepository.existsBySquad_SquadIdAndUser_UserId(squadId, userId)){
-            throw new ResourceNotFoundException("You are not a member of this squad or there is no such squad ");
-        }
+        SquadMember squadMemberUser = squadMembersRepository.findBySquad_SquadIdAndUser_UserId(userId, squadId)
+                .orElseThrow(()-> new ResourceNotFoundException("Squad not found with id : " + squadId));
+
 
         Squad squad =  squadRepository.findById(squadId).
                 orElseThrow(()-> new ResourceNotFoundException("Squad not found with id : " + squadId));
@@ -149,11 +150,14 @@ public class SquadService {
                         m.getRole(),
                         m.getJoinedAt()
                 )).toList();
+
         return new SquadDetailResponseDTO(
                 squad.getSquadId(),
                 squad.getSquadName(),
                 squad.getSquadDescription(),
                 squad.getInviteCode(),
+                squadMemberUser.getRole(),
+                squadMemberUser.getVisibility(),
                 memberList
         );
     }
@@ -183,7 +187,7 @@ public class SquadService {
                 .orElseThrow(()-> new ResourceNotFoundException("The target id : "+requestDTO.targetUserId() +" is not in this squad or the squad id : "+ squadId+" is wrong"));
 
         if(myMember.getRole() == SquadRole.ADMIN &&  ( targetMember.getRole() == SquadRole.OWNER || targetMember.getRole() == SquadRole.ADMIN  )){
-           throw new AccessDeniedException("You cannot kick someone above your role in a squad");
+           throw new AccessDeniedException("You cannot kick someone above or same as your role in a squad");
         }
         if(myMember.getRole() == SquadRole.VIEWER){
             throw new AccessDeniedException("You don't have permission to kick ANY squad member");
@@ -219,14 +223,14 @@ public class SquadService {
 
     @Transactional
     public void updateMemberRole(UpdateRoleRequestDTO dto, Long userId){
-        if (Objects.equals(userId,dto.memberId())){
+        if (Objects.equals(userId,dto.targetUserId())){
             throw new AccessDeniedException("You cannot update your own squad role");
         }
 
         SquadMember userMember= squadMembersRepository.findBySquad_SquadIdAndUser_UserId( dto.squadId(),userId)
                 .orElseThrow(()-> new ResourceNotFoundException("You are not a member of squad id: "+ dto.squadId() ));
-        SquadMember dtoMember= squadMembersRepository.findBySquad_SquadIdAndUser_UserId( dto.squadId(),dto.memberId())
-                .orElseThrow(()-> new ResourceNotFoundException("User with id :"+dto.memberId()+ " are not a member of squad id: "+ dto.squadId() ));
+        SquadMember dtoMember= squadMembersRepository.findBySquad_SquadIdAndUser_UserId( dto.squadId(),dto.targetUserId())
+                .orElseThrow(()-> new ResourceNotFoundException("User with id :"+dto.targetUserId()+ " are not a member of squad id: "+ dto.squadId() ));
 
 
 
@@ -279,7 +283,7 @@ public class SquadService {
         switch (vis){
             case PUBLIC:
                 for(Task task : tasks){
-                    String displayTitle = task.isPrivate() ? "Private" : task.getTitle();
+                    String displayTitle = task.isPrivate() ? "BUSY" : task.getTitle();
                     SquadEventResponseDTO event = new SquadEventResponseDTO(
                             task.getTaskId(),
                             displayTitle,
@@ -313,17 +317,17 @@ public class SquadService {
         return squadEvents;
     }
 
-    public List<SquadCalendarResponseDTO> getSquadCalendar(SquadCalendarRequestDTO dto, Long userId) {
+    public List<SquadCalendarResponseDTO> getSquadCalendar(Long squadId , LocalDateTime startTime , LocalDateTime endTime , Long userId) {
 
-       if(!userRepository.existsById(userId) || !squadMembersRepository.existsBySquad_SquadIdAndUser_UserId(dto.squadId(),userId)){
-           throw new ResourceNotFoundException("User not found with id : " + userId + " in the given squad id: " + dto.squadId()) ;
+       if(!userRepository.existsById(userId) || !squadMembersRepository.existsBySquad_SquadIdAndUser_UserId(squadId,userId)){
+           throw new ResourceNotFoundException("User not found with id : " + userId + " in the given squad id: " + squadId) ;
        }
 
-       List<SquadMember> members = squadMembersRepository.findAllBySquad_SquadId(dto.squadId());
+       List<SquadMember> members = squadMembersRepository.findAllBySquad_SquadId(squadId);
        List<Long> userIds = members.stream()
                 .map(m->m.getUser().getUserId()).toList();
 
-       List<UserTasks> userTasks = userTasksRepository.findTasksByUserIdsAndDateRange(userIds,dto.startTime(),dto.endTime());
+       List<UserTasks> userTasks = userTasksRepository.findTasksByUserIdsAndDateRange(userIds,startTime,endTime);
        List<SquadCalendarResponseDTO> response = new ArrayList<>();
 
        Map<Long,List<Task>> taskByUser = userTasks.stream()
@@ -341,7 +345,7 @@ public class SquadService {
            List <Task> tasks = taskByUser.getOrDefault(memberId,List.of());
 
            List<SquadEventResponseDTO> events =  mapToDTOEvent(tasks,memberVis, isCaller);
-           SquadCalendarResponseDTO responseDTO = new SquadCalendarResponseDTO(memberId,events);
+           SquadCalendarResponseDTO responseDTO = new SquadCalendarResponseDTO(memberId, member.getUser().getUsername() ,events);
            response.add(responseDTO);
        }
        return response;

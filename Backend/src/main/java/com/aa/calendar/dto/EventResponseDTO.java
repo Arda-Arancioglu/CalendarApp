@@ -4,7 +4,7 @@ import java.util.Set;
 
 public record EventResponseDTO(
 
-        Long TaskId,
+        Long taskId,
         String title,
         String description,
         LocalDateTime startTime,

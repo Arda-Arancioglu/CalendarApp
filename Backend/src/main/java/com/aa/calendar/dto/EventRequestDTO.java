@@ -2,6 +2,7 @@ package com.aa.calendar.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -9,22 +10,38 @@ import java.util.Set;
 public record EventRequestDTO (
 
         @NotBlank(message = "Title cannot be blank")
+        @Size(max=100, message = "Title cannot be longer than 100 characters" )
         String title,
 
+        @Size(max=1000, message = "Title cannot be longer than 1000 characters" )
         String description,
 
-        @NotNull
+        @NotNull(message= "Start time cannot be null")
         LocalDateTime startTime ,
 
-        @NotNull
+        @NotNull(message = "End time cannot be null")
         LocalDateTime endTime,
 
         Boolean isFlexible,
 
         Set<Long> categoryIds,
 
-        @NotNull
         Boolean isPrivate
 
 
-){}
+){
+        public EventRequestDTO{
+                if (isFlexible == null) {
+                        isFlexible = false;
+                }
+                if (isPrivate==null) {
+                        isPrivate = true;
+                }
+                if (categoryIds == null){
+                        categoryIds = Set.of();
+                }
+
+        }
+
+
+}

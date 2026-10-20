@@ -207,17 +207,32 @@ public class EventServiceTest {
     @DisplayName("deleteById: Should work as intended")
     void deleteById_userDeletesTask_success(){
 
-        when(taskRepository.findById(TASK_ID)).thenReturn(Optional.of(buildTask()));
+        UserTasks userTasks = new UserTasks(1L , buildTask() , buildUser());
+
+        when(userTasksRepository.findByUser_UserIdAndTask_TaskId(USER_ID,TASK_ID)).thenReturn(Optional.of(userTasks));
 
         assertDoesNotThrow(()->{
-            eventService.deleteByID(TASK_ID);
+            eventService.deleteByID(USER_ID,TASK_ID);
         });
 
+        verify(userTasksRepository,times(1)).deleteByTask_TaskId(any());
         verify(taskRepository,times(1)).delete(any());
         verify(taskCategoriesRepository,times(1)).deleteByTask_TaskId(any());
 
     }
 
+
+    @Test
+    @DisplayName("deleteById: Should throw ResourceNotFoundException when the user doesn't own the event")
+    void deleteById_notOwner_throwsResourceNotFoundException() {
+        when(userTasksRepository.findByUser_UserIdAndTask_TaskId(USER_ID, TASK_ID))
+                .thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> eventService.deleteByID(USER_ID, TASK_ID));
+
+        verify(taskRepository, never()).delete(any());
+    }
 
 
 

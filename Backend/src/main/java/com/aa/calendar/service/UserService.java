@@ -2,7 +2,6 @@ package com.aa.calendar.service;
 
 
 import com.aa.calendar.dto.RegisterRequest;
-import com.aa.calendar.dto.UserRequestDTO;
 import com.aa.calendar.dto.UserResponseDTO;
 
 import com.aa.calendar.entity.User;

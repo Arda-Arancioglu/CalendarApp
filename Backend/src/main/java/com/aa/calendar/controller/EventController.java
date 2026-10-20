@@ -35,8 +35,9 @@ public class EventController {
 
 
     @GetMapping("/{id}")
-    public ResponseEntity<EventResponseDTO> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(service.getByID(id));
+    public ResponseEntity<EventResponseDTO> getById(@PathVariable Long id ,Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(service.getByID(userId,id));
     }
 
     @GetMapping
@@ -54,14 +55,9 @@ public class EventController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<EventResponseDTO> deleteById(@PathVariable Long id) {
-        return ResponseEntity.ok(service.deleteByID(id));
-    }
-
-    @DeleteMapping
-    public ResponseEntity<Void> deleteEvents() {
-        service.deleteEvents();
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<EventResponseDTO> deleteById(@PathVariable Long id,Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(service.deleteByID(userId , id));
     }
 
     @PutMapping("/{id}")
@@ -71,7 +67,6 @@ public class EventController {
         Long userId = (Long) authentication.getPrincipal();
         return ResponseEntity.ok(service.updateByID(id,request,userId));
     }
-
 
 
 

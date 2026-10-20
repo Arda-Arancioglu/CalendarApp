@@ -127,19 +127,24 @@ public class EventService {
         );
     }
 
-    public EventResponseDTO getByID(Long id){
-        Task task =  taskRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Event with the given id : "+id+" is not found."));
-        return mapToDTO(task);
+    public EventResponseDTO getByID(Long userId ,Long taskId){
+        return userTasksRepository.findByUser_UserIdAndTask_TaskId(userId,taskId)
+                .map(UserTasks::getTask)
+                .map(this::mapToDTO)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     @Transactional
-    public EventResponseDTO deleteByID(Long id){
-        Task task =  taskRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Event with the given id : "+id+" is not found."));
+    public EventResponseDTO deleteByID(Long userId,Long id){
+
+        Task task = userTasksRepository.findByUser_UserIdAndTask_TaskId(userId,id).map(UserTasks::getTask)
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
+
         EventResponseDTO myResponse = mapToDTO(task);
 
+        userTasksRepository.deleteByTask_TaskId(id);
         taskRepository.delete(task);
         //Delete and not deleteByID because OPTIMIZATIONN :D
-
         taskCategoriesRepository.deleteByTask_TaskId(id);
 
         return  myResponse;
@@ -170,12 +175,6 @@ public class EventService {
         }
 
         return  mapToDTO(task);
-    }
-
-
-    public void deleteEvents() {
-        userTasksRepository.deleteAll();
-        taskRepository.deleteAll();
     }
 
 

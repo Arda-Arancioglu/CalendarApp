@@ -10,6 +10,6 @@ public record UpdateRoleRequestDTO(
         @NotNull(message= "Squad Id cannot be null")
         Long squadId,
         @NotNull
-        Long memberId
+        Long targetUserId
 ) {
 }

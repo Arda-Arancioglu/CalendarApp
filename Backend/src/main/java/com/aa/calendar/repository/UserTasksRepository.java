@@ -9,11 +9,12 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface UserTasksRepository extends JpaRepository<UserTasks, Long> {
 
-//    boolean existsByUser_UserIdAndTask_TaskId(Long userId, Long taskId);
+    Optional<UserTasks> findByUser_UserIdAndTask_TaskId(Long userId, Long taskId);
 
     List<UserTasks> findByUser_UserId(Long userId);
 
@@ -29,4 +30,5 @@ public interface UserTasksRepository extends JpaRepository<UserTasks, Long> {
                                               @Param("endTime") LocalDateTime endTime
                                                    );
 
+    void deleteByTask_TaskId(Long id);
 }

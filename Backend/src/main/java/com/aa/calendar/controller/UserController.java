@@ -1,14 +1,8 @@
 package com.aa.calendar.controller;
 
-import com.aa.calendar.dto.AuthResponse;
-import com.aa.calendar.dto.RegisterRequest;
-import com.aa.calendar.dto.UserRequestDTO;
 import com.aa.calendar.dto.UserResponseDTO;
-import com.aa.calendar.entity.User;
 import com.aa.calendar.service.UserService;
-import jakarta.validation.Valid;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;

@@ -4,12 +4,14 @@ import com.aa.calendar.dto.*;
 import com.aa.calendar.service.SquadService;
 
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -70,10 +72,14 @@ public class SquadController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/calendar")
-    public ResponseEntity<List<SquadCalendarResponseDTO>> getAllSquadCalendar(@Valid @RequestBody SquadCalendarRequestDTO dto ,Authentication authentication){
+    @GetMapping("/{squadId}/calendar")
+    public ResponseEntity<List<SquadCalendarResponseDTO>> getAllSquadCalendar(@PathVariable Long squadId,
+                                                                              @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
+                                                                              @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
+                                                                              Authentication authentication)
+    {
         Long userId = (Long) authentication.getPrincipal();
-        return ResponseEntity.ok(squadService.getSquadCalendar(dto,userId));
+        return ResponseEntity.ok(squadService.getSquadCalendar(squadId , startTime ,endTime,userId));
     }
 
     @PutMapping("/visibility")

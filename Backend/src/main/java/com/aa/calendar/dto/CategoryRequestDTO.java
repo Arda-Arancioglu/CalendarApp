@@ -2,10 +2,12 @@ package com.aa.calendar.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 public record CategoryRequestDTO(
 
         @NotBlank(message="Category name cannot be blank")
+        @Size(max = 50 , message="Category name cannot be more than 50")
         String name,
 
         @NotBlank(message = "Category color cannot be blank")
