@@ -45,6 +45,7 @@ public class EventService {
         task.setStartTime(dto.startTime());
         task.setEndTime(dto.endTime());
         task.setFlexible(dto.isFlexible() != null && dto.isFlexible());
+        task.setPrivate(dto.isPrivate() != null && dto.isPrivate());
         Task saved = taskRepository.save(task);
 
         //auto adding the creator
@@ -65,7 +66,7 @@ public class EventService {
         }
         return mapToDTO(saved);
     }
-
+    @Transactional
     public List<EventResponseDTO> getAll(Long userId) {
 
         userRepository.findById(userId).orElseThrow(()-> new BadRequestException("User not found"));
@@ -75,6 +76,7 @@ public class EventService {
         return myEvents.stream().map(UserTasks::getTask).map(this::mapToDTO).toList();
     }
 
+    @Transactional
     public List<EventResponseDTO> getEventsInRange(Long userId,LocalDateTime start, LocalDateTime end) {
         if (start != null && end != null) {
             validateEventDates(start, end);
@@ -127,6 +129,7 @@ public class EventService {
         );
     }
 
+    @Transactional
     public EventResponseDTO getByID(Long userId ,Long taskId){
         return userTasksRepository.findByUser_UserIdAndTask_TaskId(userId,taskId)
                 .map(UserTasks::getTask)
@@ -153,6 +156,11 @@ public class EventService {
     @Transactional
     public EventResponseDTO updateByID(Long id, EventRequestDTO dto, Long userId) {
         validateEventDates(dto.startTime(), dto.endTime());
+
+        if(!userTasksRepository.existsByUser_UserIdAndTask_TaskId(userId,id)){
+            throw new ResourceNotFoundException("User not found");
+        }
+
         Task task =  taskRepository.findById(id)
                 .orElseThrow(()-> new ResourceNotFoundException("Event with the given id : "+id+" is not found."));
 
@@ -160,7 +168,8 @@ public class EventService {
         task.setDescription(dto.description());
         task.setStartTime(dto.startTime());
         task.setEndTime(dto.endTime());
-        task.setFlexible(dto.isFlexible());
+        task.setFlexible(dto.isFlexible() != null && dto.isFlexible());
+        task.setPrivate(dto.isPrivate() != null && dto.isPrivate());
         taskRepository.save(task);
 
         if (dto.categoryIds()!=null){

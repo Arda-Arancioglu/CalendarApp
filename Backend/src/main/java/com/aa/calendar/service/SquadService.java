@@ -58,7 +58,7 @@ public class SquadService {
        );
     }
 
-    private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private final SecureRandom secureRandom = new SecureRandom();
     private static final int MAX_RETRIES = 10;
 
@@ -121,6 +121,7 @@ public class SquadService {
         return mapToDTO(squad);
     }
 
+    @Transactional
     public List<SquadSummaryResponseDTO> getAllSquads(Long userId) {
        if (!userRepository.existsById(userId)){
            throw new ResourceNotFoundException("User not found with id : " + userId);
@@ -130,6 +131,7 @@ public class SquadService {
                .toList();
     }
 
+    @Transactional
     public SquadDetailResponseDTO getSquad(Long userId, Long squadId) {
         if (!userRepository.existsById(userId)){
             throw new ResourceNotFoundException("User not found with id : " + userId);

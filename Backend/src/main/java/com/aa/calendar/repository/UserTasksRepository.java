@@ -31,4 +31,6 @@ public interface UserTasksRepository extends JpaRepository<UserTasks, Long> {
                                                    );
 
     void deleteByTask_TaskId(Long id);
+
+    boolean existsByUser_UserIdAndTask_TaskId(Long userId, Long id);
 }
