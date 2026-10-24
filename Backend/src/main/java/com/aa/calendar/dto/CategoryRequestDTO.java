@@ -15,4 +15,12 @@ public record CategoryRequestDTO(
         String color
 
 ) {
+        public CategoryRequestDTO{
+                if(name!=null){
+                        name=name.trim();
+                }
+                if(color!=null){
+                        color=color.trim();
+                }
+        }
 }

@@ -46,6 +46,9 @@ public class EventService {
         task.setEndTime(dto.endTime());
         task.setFlexible(dto.isFlexible() != null && dto.isFlexible());
         task.setPrivate(dto.isPrivate() != null && dto.isPrivate());
+        task.setRecurrenceType(dto.recurrenceType());
+        task.setRecurrenceEndDate(dto.recurrenceEndDate());
+
         Task saved = taskRepository.save(task);
 
         //auto adding the creator
@@ -123,7 +126,9 @@ public class EventService {
                 task.getEndTime(),
                 task.isFlexible(),
                 categoryDTOs,
-                task.isPrivate()
+                task.isPrivate(),
+                task.getRecurrenceType(),
+                task.getRecurrenceEndDate()
 
 
         );
@@ -170,6 +175,8 @@ public class EventService {
         task.setEndTime(dto.endTime());
         task.setFlexible(dto.isFlexible() != null && dto.isFlexible());
         task.setPrivate(dto.isPrivate() != null && dto.isPrivate());
+        task.setRecurrenceType(dto.recurrenceType());
+        task.setRecurrenceEndDate(dto.recurrenceEndDate());
         taskRepository.save(task);
 
         if (dto.categoryIds()!=null){

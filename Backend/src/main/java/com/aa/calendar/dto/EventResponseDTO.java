@@ -1,4 +1,7 @@
 package com.aa.calendar.dto;
+import com.aa.calendar.entity.RecurrenceType;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -11,6 +14,8 @@ public record EventResponseDTO(
         LocalDateTime endTime,
         Boolean isFlexible,
         Set<CategoryResponseDTO> categories,
-        Boolean isPrivate
+        Boolean isPrivate,
+        RecurrenceType recurrenceType,
+        LocalDate recurrenceEndDate
 
 ) {}

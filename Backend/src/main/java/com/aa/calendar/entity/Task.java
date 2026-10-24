@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -36,4 +37,10 @@ public class Task {
     @Column(nullable = false)
     private boolean isPrivate= false;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "varchar(32) default 'NONE' ")
+    private RecurrenceType recurrenceType = RecurrenceType.NONE;
+
+    @Column(nullable = false)
+    private LocalDate recurrenceEndDate;
 }
