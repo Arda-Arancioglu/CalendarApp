@@ -44,6 +44,9 @@ class SquadServiceTest {
    @Mock
    private TaskRepository taskRepository;
 
+   @Mock
+   private RecurrenceExpander recurrenceExpander;
+
    @InjectMocks
    private SquadService squadService;
 
@@ -303,13 +306,13 @@ class SquadServiceTest {
         when(squadMembersRepository.existsBySquad_SquadIdAndUser_UserId(SQUAD_ID, OWNER_ID)).thenReturn(true);
         when(squadMembersRepository.findAllBySquad_SquadId(SQUAD_ID)).thenReturn(List.of(squadMember1, squadMember2, squadMember3));
 
-        when(userTasksRepository.findTasksByUserIdsAndDateRange(any(),eq(Time1),eq(Time2))).thenReturn(List.of(ut1,ut2,ut3));
+        when(userTasksRepository.findTasksByUserIdsAndDateRange(any(),eq(Time1),eq(Time2),any(),any())).thenReturn(List.of(ut1,ut2,ut3));
 
         assertDoesNotThrow(() -> {
             squadService.getSquadCalendar(SQUAD_ID,Time1 , Time2, OWNER_ID);
         });
 
-        verify(userTasksRepository, times(1)).findTasksByUserIdsAndDateRange(any(),any(),any());
+        verify(userTasksRepository, times(1)).findTasksByUserIdsAndDateRange(any(),any(),any(),any(),any());
         verify(squadMembersRepository , times(1)).findAllBySquad_SquadId(SQUAD_ID);
     }
 

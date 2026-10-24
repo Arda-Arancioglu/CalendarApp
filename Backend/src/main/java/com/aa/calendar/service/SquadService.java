@@ -23,19 +23,22 @@ public class SquadService {
     private final SquadRepository squadRepository;
     private final TaskRepository taskRepository;
     private final UserTasksRepository   userTasksRepository;
+    private final RecurrenceExpander recurrenceExpander;
 
 
     public SquadService(SquadMembersRepository squadMembersRepository,
                         UserRepository userRepository,
                         SquadRepository squadRepository,
                         TaskRepository taskRepository,
-                        UserTasksRepository userTaskRepository
+                        UserTasksRepository userTaskRepository,
+                        RecurrenceExpander recurrenceExpander
                         ) {
         this.squadMembersRepository = squadMembersRepository;
         this.userRepository = userRepository;
         this.squadRepository = squadRepository;
         this.taskRepository = taskRepository;
         this.userTasksRepository = userTaskRepository;
+        this.recurrenceExpander= recurrenceExpander;
 
     }
 
@@ -270,55 +273,45 @@ public class SquadService {
 
     }
 
-    private List<SquadEventResponseDTO> mapToDTOEvent(List<Task> tasks , EventVisibility vis , Boolean isCaller) {
+    private List<SquadEventResponseDTO> mapToDTOEvent(List<Task> tasks , EventVisibility vis
+            , Boolean isCaller ,LocalDateTime windowStart, LocalDateTime windowEnd) {
+
+        if(vis==EventVisibility.MUTED && !isCaller){
+            return List.of();
+        }
+
         List<SquadEventResponseDTO> squadEvents = new ArrayList<>();
-        if(isCaller){
-            for(Task task : tasks){
-                SquadEventResponseDTO event = new SquadEventResponseDTO(
-                        task.getTaskId(),
-                        task.getTitle(),
-                        task.getStartTime(),
-                        task.getEndTime(),
-                        task.isFlexible()
-                );
-                squadEvents.add(event);
+
+        for (Task task :tasks){
+            List<EventResponseDTO> occurences = recurrenceExpander.expandTask(
+                    task,
+                    Set.of(),
+                    windowStart,
+                    windowEnd
+            );
+
+
+            for (EventResponseDTO occ : occurences) {
+
+                String displayTitle;
+                if(isCaller){
+                    displayTitle = occ.title();
+                } else if (vis==EventVisibility.PUBLIC) {
+                    displayTitle = occ.isPrivate() ? "BUSY" : occ.title();
+                }else{
+                    displayTitle = "BUSY";
+                }
+
+                squadEvents.add(new SquadEventResponseDTO(
+                   occ.taskId(),
+                   displayTitle,
+                   occ.startTime(),
+                   occ.endTime(),
+                   occ.isFlexible()
+                ));
+
             }
-            return squadEvents;
         }
-        switch (vis){
-            case PUBLIC:
-                for(Task task : tasks){
-                    String displayTitle = task.isPrivate() ? "BUSY" : task.getTitle();
-                    SquadEventResponseDTO event = new SquadEventResponseDTO(
-                            task.getTaskId(),
-                            displayTitle,
-                            task.getStartTime(),
-                            task.getEndTime(),
-                            task.isFlexible()
-                    );
-                    squadEvents.add(event);
-                }
-                break;
-
-            case BUSY:
-                for(Task task : tasks){
-                    SquadEventResponseDTO event = new SquadEventResponseDTO(
-                            task.getTaskId(),
-                            "BUSY",
-                            task.getStartTime(),
-                            task.getEndTime(),
-                            task.isFlexible()
-                    );
-                    squadEvents.add(event);
-                }
-
-                break;
-            case MUTED:
-                //Muted means no view for the squad but this doesn't mean they cannot use functions
-                // They will use functions such as find a suitable time. (Planned)
-               default:
-        }
-
         return squadEvents;
     }
 
@@ -333,7 +326,9 @@ public class SquadService {
        List<Long> userIds = members.stream()
                 .map(m->m.getUser().getUserId()).toList();
 
-       List<UserTasks> userTasks = userTasksRepository.findTasksByUserIdsAndDateRange(userIds,startTime,endTime);
+       List<UserTasks> userTasks = userTasksRepository.findTasksByUserIdsAndDateRange(userIds,startTime,endTime
+               ,startTime.toLocalDate(),RecurrenceType.NONE);
+
        List<SquadCalendarResponseDTO> response = new ArrayList<>();
 
        Map<Long,List<Task>> taskByUser = userTasks.stream()
@@ -350,7 +345,8 @@ public class SquadService {
 
            List <Task> tasks = taskByUser.getOrDefault(memberId,List.of());
 
-           List<SquadEventResponseDTO> events =  mapToDTOEvent(tasks,memberVis, isCaller);
+           List<SquadEventResponseDTO> events =  mapToDTOEvent(tasks,memberVis, isCaller,startTime,endTime);
+
            SquadCalendarResponseDTO responseDTO = new SquadCalendarResponseDTO(memberId, member.getUser().getUsername() ,events);
            response.add(responseDTO);
        }
