@@ -38,9 +38,8 @@ public class Task {
     private boolean isPrivate= false;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "varchar(32) default 'NONE' ")
+    @Column(nullable = false)
     private RecurrenceType recurrenceType = RecurrenceType.NONE;
 
-    @Column(nullable = false)
     private LocalDate recurrenceEndDate;
 }

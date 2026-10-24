@@ -2,10 +2,7 @@ package com.aa.calendar.service;
 
 import com.aa.calendar.dto.EventRequestDTO;
 import com.aa.calendar.dto.EventResponseDTO;
-import com.aa.calendar.entity.Category;
-import com.aa.calendar.entity.Task;
-import com.aa.calendar.entity.User;
-import com.aa.calendar.entity.UserTasks;
+import com.aa.calendar.entity.*;
 import com.aa.calendar.exception.BadRequestException;
 import com.aa.calendar.exception.ResourceNotFoundException;
 import com.aa.calendar.repository.*;
@@ -38,6 +35,8 @@ public class EventServiceTest {
     private CategoryRepository categoryRepository;
     @Mock
     private TaskCategoriesRepository taskCategoriesRepository;
+    @Mock
+    private RecurrenceExpander recurrenceExpander;
 
     @InjectMocks
     private EventService eventService;
@@ -63,7 +62,9 @@ public class EventServiceTest {
                Time2,
                false,
                Set.of(),
-               true
+               true,
+               RecurrenceType.NONE,
+               null
 
        );
     }
@@ -75,7 +76,9 @@ public class EventServiceTest {
                 Time2,
                 false,
                 Set.of(1L,2L,3L),
-                true
+                true,
+                RecurrenceType.NONE,
+                null
 
         );
     }
@@ -154,19 +157,24 @@ public class EventServiceTest {
     @DisplayName("getEventsInRange: Should work as intended")
     void getEventsInRange_userCallsWithCorrectValues_success(){
         User user = buildUser();
-        UserTasks task1 = new UserTasks(1L,buildTask(1L,Time1,Time2),user);
-        UserTasks task2 = new UserTasks(2L,buildTask(2L,Time2,Time3),user);
-        UserTasks task3 = new UserTasks(3L,buildTask(3L,Time3,Time4),user);
-        List<UserTasks> userTasks = List.of(task1,task2,task3);
+        Task t1 = buildTask(1L,Time1,Time2);
+        Task t2 = buildTask(2L,Time2,Time3);
+        Task t3 = buildTask(3L,Time1,Time3);
+        List<Task> tasks = List.of(t1,t2,t3);
+
 
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
-        when(userTasksRepository.findByUser_UserId(USER_ID)).thenReturn(userTasks);
+
+        when(taskRepository.findTasksForCalendarWindow(eq(USER_ID),any(),any(),any(),eq(RecurrenceType.NONE))).thenReturn(tasks);
+
+        when(recurrenceExpander.expandTask(any(), any(), any(), any()))
+                .thenReturn(List.of(mock(EventResponseDTO.class)));
 
         List<EventResponseDTO> myEvent = eventService.getEventsInRange(USER_ID,Time1,Time3.minusSeconds(1L));
 
-        assertEquals(2,myEvent.size(),"Should only include events within the specified time range");
+        assertEquals(3,myEvent.size(),"Should only include events within the specified time range");
 
-        verify(userTasksRepository,times(1)).findByUser_UserId(USER_ID);
+        verify(taskRepository,times(1)).findTasksForCalendarWindow(eq(USER_ID),any(),any(),any(),eq(RecurrenceType.NONE));
 
     }
 
@@ -181,7 +189,9 @@ public class EventServiceTest {
                 Time2,
                 false,
                 Set.of(1L,2L,3L),
-                true
+                true,
+                RecurrenceType.NONE,
+                null
 
         );
         Category c1 = new Category();
@@ -191,6 +201,7 @@ public class EventServiceTest {
         when(taskRepository.findById(TASK_ID)).thenReturn(Optional.of(buildTask()));
         when(categoryRepository.findAllByCategoryIdInAndUser_UserId(eventRequestDTO.categoryIds(),USER_ID))
                 .thenReturn(Set.of(c1,c2,c3));
+        when(userTasksRepository.existsByUser_UserIdAndTask_TaskId(USER_ID, TASK_ID)).thenReturn(true);
 
        assertDoesNotThrow(()->{
            eventService.updateByID(TASK_ID,eventRequestDTO,USER_ID);

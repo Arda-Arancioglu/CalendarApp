@@ -9,6 +9,7 @@ import com.aa.calendar.repository.SquadMembersRepository;
 import com.aa.calendar.repository.TaskRepository;
 import com.aa.calendar.repository.UserRepository;
 import com.aa.calendar.repository.UserTasksRepository;
+import jakarta.validation.constraints.Null;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -68,6 +70,20 @@ class SquadServiceTest {
         squadMember.setUser(user);
         return squadMember;
    }
+    private Task buildTask(Long id, String title, String description , LocalDateTime startTime, LocalDateTime endTime
+                           , boolean  isFlexible , boolean isPrivate , RecurrenceType recurrenceType, LocalDate time) {
+        Task task = new Task();
+        task.setTaskId(id);
+        task.setTitle(title);
+        task.setDescription(description);
+        task.setStartTime(startTime);
+        task.setEndTime(endTime);
+        task.setFlexible(isFlexible);
+        task.setPrivate(isPrivate);
+        task.setRecurrenceType(recurrenceType);
+        task.setRecurrenceEndDate(time);
+        return task;
+    }
 
    @Nested
    class leaveSquadTests {
@@ -266,9 +282,9 @@ class SquadServiceTest {
         squadMember3.setVisibility(EventVisibility.MUTED);
 
 
-        Task task1 = new Task(1L,"title","des",Time1,Time2,true,true);
-        Task task2 = new Task(2L,"title","des",Time1,Time2,true,false);
-        Task task3 = new Task(3L,"title","des",Time1,Time2,true,false);
+        Task task1 = new Task(1L,"title","des",Time1,Time2,true,true,RecurrenceType.DAILY, null);
+        Task task2 = new Task(2L,"title","des",Time1,Time2,true,false,RecurrenceType.NONE, null);
+        Task task3 = new Task(3L,"title","des",Time1,Time2,true,false,RecurrenceType.NONE, null);
 
 
        UserTasks ut1 = new UserTasks();

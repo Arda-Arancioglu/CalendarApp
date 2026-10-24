@@ -25,14 +25,15 @@ public class EventService {
     private  final UserTasksRepository userTasksRepository;
     private final CategoryRepository categoryRepository;
     private  final TaskCategoriesRepository taskCategoriesRepository;
+    private final RecurrenceExpander recurrenceExpander;
 
-
-    public EventService(TaskRepository taskRepository , UserRepository userRepository ,UserTasksRepository userTasksRepository,CategoryRepository categoryRepository, TaskCategoriesRepository taskCategoriesRepository) {
+    public EventService(TaskRepository taskRepository , UserRepository userRepository ,UserTasksRepository userTasksRepository,CategoryRepository categoryRepository, TaskCategoriesRepository taskCategoriesRepository , RecurrenceExpander recurrenceExpander) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.userTasksRepository = userTasksRepository;
         this.categoryRepository = categoryRepository;
         this.taskCategoriesRepository = taskCategoriesRepository;
+        this.recurrenceExpander = recurrenceExpander;
     }
 
     @Transactional
@@ -81,35 +82,30 @@ public class EventService {
 
     @Transactional
     public List<EventResponseDTO> getEventsInRange(Long userId,LocalDateTime start, LocalDateTime end) {
-        if (start != null && end != null) {
-            validateEventDates(start, end);
+        if (start == null || end == null) {
+            throw new BadRequestException("Start or end time cannot be null");
         }
+        validateEventDates(start, end);
         userRepository.findById(userId).orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
-        List<UserTasks> userEvents = userTasksRepository.findByUser_UserId(userId);
+        RecurrenceType noneType = RecurrenceType.NONE;
+        List<Task> tasks = taskRepository.findTasksForCalendarWindow(userId,start,end,start.toLocalDate(),noneType);
+
+
         List<EventResponseDTO> events = new ArrayList<>();
 
-        for (UserTasks userTask : userEvents) {
-            Task task = userTask.getTask();
 
-            if(task==null || task.getStartTime()==null || task.getEndTime()==null){
-                continue;
-            }
-
-            boolean endsBeforeStart = (start!= null && task.getEndTime().isBefore(start));
-            boolean startsAfterEnd = (end!= null && task.getStartTime().isAfter(end));
-
-            if (!endsBeforeStart && !startsAfterEnd) {
-                events.add(mapToDTO(task));
-            }
+        for (Task task : tasks) {
+            Set<CategoryResponseDTO> categories = getCategoriesForTask(task.getTaskId());
+            events.addAll(recurrenceExpander.expandTask(task,categories,start,end));
         }
 
         return events;
     }
 
-    public EventResponseDTO mapToDTO(Task task) {
-        List<TaskCategories> taskCategories = taskCategoriesRepository.findByTask_TaskId(task.getTaskId());
-        Set<CategoryResponseDTO>  categoryDTOs = taskCategories
+    private Set<CategoryResponseDTO> getCategoriesForTask(Long taskId) {
+        List<TaskCategories> taskCategories = taskCategoriesRepository.findByTask_TaskId(taskId);
+        return  taskCategories
                 .stream()
                 .map(tc->new CategoryResponseDTO(
                         tc.getCategory().getCategoryId(),
@@ -117,6 +113,10 @@ public class EventService {
                         tc.getCategory().getColor()
                 ))
                 .collect(Collectors.toSet());
+    }
+
+    private EventResponseDTO mapToDTO(Task task) {
+        Set<CategoryResponseDTO> categoryDTOs = getCategoriesForTask(task.getTaskId());
 
         return new EventResponseDTO(
                 task.getTaskId(),
