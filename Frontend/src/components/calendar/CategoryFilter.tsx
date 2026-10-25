@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Lock, Repeat, Tags } from 'lucide-react';
+import { Lock, Repeat, Tags, Waves } from 'lucide-react';
 import { DEFAULT_EVENT_COLOR, normalizeHexColor, withAlpha } from '../../utils/colors';
 import { cn } from '../../utils/cn';
 import type { CategoryResponseDTO } from '../../types/category';
@@ -111,10 +111,14 @@ export function CategoryFilter({
         )}
       </div>
 
-      {/* Visual cue legend for flexible & private events */}
+      {/* Visual cue legend for recurring, flexible & private events */}
       <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400">
+        <span className="inline-flex items-center gap-1.5" title="Recurring series">
+          <Repeat className="h-3.5 w-3.5 text-indigo-300" aria-hidden="true" />
+          <span>Repeat = Recurring</span>
+        </span>
         <span className="inline-flex items-center gap-1.5" title="Flexible events have a dashed border">
-          <Repeat className="h-3.5 w-3.5 text-amber-300" aria-hidden="true" />
+          <Waves className="h-3.5 w-3.5 text-amber-300" aria-hidden="true" />
           <span>Dashed = Flexible</span>
         </span>
         <span className="inline-flex items-center gap-1.5" title="Private events appear as Busy to squads">

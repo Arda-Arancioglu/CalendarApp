@@ -1,6 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { addMonths, eachDayOfInterval, endOfMonth, format, isValid, startOfMonth } from 'date-fns';
-import { CalendarDays, Check, Sparkles } from 'lucide-react';
+import {
+  CalendarDays,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Hash,
+  Minus,
+  Sparkles,
+} from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Alert } from '../ui/Alert';
@@ -25,33 +33,63 @@ import type {
 export type RecurrenceScopeAction = 'edit' | 'delete';
 
 export interface RecurrenceCustomDatePickerProps {
+  event?: EventResponseDTO;
   currentOccurrenceDate: ApiDate;
-  upcomingOccurrences: ApiDate[];
+  upcomingOccurrences?: ApiDate[];
   selectedDates: ApiDate[];
   onChangeSelectedDates: (dates: ApiDate[]) => void;
   variant?: 'indigo' | 'danger';
   disabled?: boolean;
 }
 
+const INITIAL_MONTHS_TO_SHOW = 3;
+const MONTHS_STEP = 3;
+const MAX_MONTHS_TO_SHOW = 24;
+
 /**
- * Reusable 3-month occurrence mini-calendar with Quick-Select [2 | 4 | 8 | 12] toolbar.
- * Used inline inside `EventFormModal` ("Custom dates...") and inside `RecurrenceScopeModal`.
+ * Interactive multi-month occurrence selector with:
+ * - Custom number input ("Select next N occurrences") + quick preset buttons [2 | 4 | 8 | 12]
+ * - Per-month select-all tick / checkbox in each month header
+ * - "Show more months" / "Show fewer months" pagination
  */
 export function RecurrenceCustomDatePicker({
+  event,
   currentOccurrenceDate,
-  upcomingOccurrences,
+  upcomingOccurrences: externalOccurrences,
   selectedDates,
   onChangeSelectedDates,
   variant = 'indigo',
   disabled = false,
 }: RecurrenceCustomDatePickerProps) {
-  const occurrenceSet = useMemo(() => new Set<ApiDate>(upcomingOccurrences), [upcomingOccurrences]);
+  const countInputId = useId();
+  const [monthsToShow, setMonthsToShow] = useState<number>(INITIAL_MONTHS_TO_SHOW);
+  const [customCountInput, setCustomCountInput] = useState<string>('');
 
-  const [calendarMonths] = useState<Date[]>(() => {
+  // Generate occurrences dynamically across all visible months (and enough for custom count)
+  const parsedCount = Number.parseInt(customCountInput, 10);
+  const minOccurrencesNeeded =
+    Number.isInteger(parsedCount) && parsedCount > 12 ? Math.min(parsedCount, 365) : 12;
+
+  const computedOccurrences = useMemo<ApiDate[]>(() => {
+    if (event) {
+      return generateUpcomingOccurrenceDates(event, monthsToShow, minOccurrencesNeeded);
+    }
+    return externalOccurrences ?? [];
+  }, [event, externalOccurrences, monthsToShow, minOccurrencesNeeded]);
+
+  const occurrenceSet = useMemo(
+    () => new Set<ApiDate>(computedOccurrences),
+    [computedOccurrences],
+  );
+
+  const [baseMonthStart] = useState<Date>(() => {
     const base = fromApiDate(currentOccurrenceDate);
-    const startMonth = startOfMonth(isValid(base) ? base : new Date());
-    return [startMonth, addMonths(startMonth, 1), addMonths(startMonth, 2)];
+    return startOfMonth(isValid(base) ? base : new Date());
   });
+
+  const calendarMonths = useMemo<Date[]>(() => {
+    return Array.from({ length: monthsToShow }, (_, i) => addMonths(baseMonthStart, i));
+  }, [baseMonthStart, monthsToShow]);
 
   const isDanger = variant === 'danger';
 
@@ -59,25 +97,124 @@ export function RecurrenceCustomDatePicker({
     const next = selectedDates.includes(dateStr)
       ? selectedDates.filter((d) => d !== dateStr)
       : [...selectedDates, dateStr].sort();
+    setCustomCountInput(String(next.length));
     onChangeSelectedDates(next);
   };
 
-  const handleQuickSelect = (count: number) => {
-    onChangeSelectedDates(upcomingOccurrences.slice(0, count));
+  const applyOccurrenceCount = (count: number) => {
+    const clamped = Math.max(0, Math.min(count, 365));
+    const pool = event
+      ? generateUpcomingOccurrenceDates(event, Math.max(monthsToShow, 6), Math.max(12, clamped))
+      : computedOccurrences;
+    const batch = pool.slice(0, clamped);
+    onChangeSelectedDates(batch);
+
+    // Automatically reveal enough months so the last selected occurrence is visible
+    const lastSelected = batch[batch.length - 1];
+    if (lastSelected) {
+      const lastDate = fromApiDate(lastSelected);
+      if (isValid(lastDate)) {
+        const diffMonths =
+          (lastDate.getFullYear() - baseMonthStart.getFullYear()) * 12 +
+          (lastDate.getMonth() - baseMonthStart.getMonth()) +
+          1;
+        if (diffMonths > monthsToShow) {
+          const rounded = Math.min(
+            MAX_MONTHS_TO_SHOW,
+            Math.ceil(diffMonths / MONTHS_STEP) * MONTHS_STEP,
+          );
+          setMonthsToShow(rounded);
+        }
+      }
+    }
   };
+
+  const handleQuickSelect = (count: number) => {
+    setCustomCountInput(String(count));
+    applyOccurrenceCount(count);
+  };
+
+  const handleCustomCountChange = (raw: string) => {
+    setCustomCountInput(raw);
+    const trimmed = raw.trim();
+    if (trimmed === '') {
+      onChangeSelectedDates([]);
+      return;
+    }
+    const num = Number.parseInt(trimmed, 10);
+    if (Number.isInteger(num) && num >= 1) {
+      applyOccurrenceCount(num);
+    }
+  };
+
+  const toggleMonthOccurrences = (monthOccurrenceDates: ApiDate[]) => {
+    if (monthOccurrenceDates.length === 0) return;
+    const allSelected = monthOccurrenceDates.every((d) => selectedDates.includes(d));
+    let next: ApiDate[];
+    if (allSelected) {
+      const removeSet = new Set(monthOccurrenceDates);
+      next = selectedDates.filter((d) => !removeSet.has(d));
+    } else {
+      const merged = new Set([...selectedDates, ...monthOccurrenceDates]);
+      next = Array.from(merged).sort();
+    }
+    setCustomCountInput(next.length > 0 ? String(next.length) : '');
+    onChangeSelectedDates(next);
+  };
+
+  // Check if series has already ended before the end of currently visible months
+  const canShowMoreMonths = useMemo(() => {
+    if (monthsToShow >= MAX_MONTHS_TO_SHOW) return false;
+    if (event?.recurrenceEndDate) {
+      const endLimit = fromApiDate(event.recurrenceEndDate);
+      const lastVisibleMonth = calendarMonths[calendarMonths.length - 1];
+      if (isValid(endLimit) && lastVisibleMonth && endOfMonth(lastVisibleMonth) >= endLimit) {
+        return false;
+      }
+    }
+    return true;
+  }, [monthsToShow, event, calendarMonths]);
 
   return (
     <div className="space-y-3.5 rounded-xl border border-dark-border bg-dark-bg/60 p-4">
-      {/* Quick-Select Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dark-border pb-3">
-        <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-300">
-          <Sparkles className="h-3.5 w-3.5 text-indigo-400" aria-hidden="true" />
-          <span>Select next</span>
+      {/* Top Toolbar: Custom Number Input + Quick-Select Presets */}
+      <div className="flex flex-col gap-2.5 border-b border-dark-border pb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <label
+            htmlFor={countInputId}
+            className="flex items-center gap-1.5 text-xs font-medium text-zinc-200"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-indigo-400" aria-hidden="true" />
+            <span>Select next</span>
+          </label>
+
+          <div className="relative flex items-center">
+            <Hash
+              className="pointer-events-none absolute left-2 h-3 w-3 text-zinc-500"
+              aria-hidden="true"
+            />
+            <input
+              id={countInputId}
+              type="number"
+              min={1}
+              max={365}
+              disabled={disabled}
+              value={customCountInput}
+              onChange={(e) => handleCustomCountChange(e.target.value)}
+              placeholder="e.g. 5"
+              aria-label="Number of occurrences to select"
+              className="h-7 w-20 rounded-lg border border-dark-border bg-dark-surface pl-6 pr-2 text-xs font-semibold text-zinc-100 outline-none transition-colors placeholder:font-normal placeholder:text-zinc-500 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500/40 disabled:opacity-60"
+            />
+          </div>
+
+          <span className="text-xs text-zinc-400">occurrences</span>
         </div>
 
+        {/* Quick-Select Preset Buttons */}
         <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-0.5 text-[11px] text-zinc-500">Quick select:</span>
           {QUICK_SELECT_COUNTS.map((count) => {
-            const targetBatch = upcomingOccurrences.slice(0, count);
+            const targetBatch = computedOccurrences.slice(0, count);
             const isBatchActive =
               targetBatch.length > 0 &&
               selectedDates.length === targetBatch.length &&
@@ -93,7 +230,9 @@ export function RecurrenceCustomDatePicker({
                 className={cn(
                   'rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors',
                   isBatchActive
-                    ? 'border-indigo-400 bg-indigo-500/25 text-indigo-100'
+                    ? isDanger
+                      ? 'border-red-400 bg-red-500/25 text-red-100'
+                      : 'border-indigo-400 bg-indigo-500/25 text-indigo-100'
                     : 'border-dark-border bg-dark-surface text-zinc-300 hover:border-zinc-600 hover:text-zinc-100',
                 )}
               >
@@ -101,12 +240,15 @@ export function RecurrenceCustomDatePicker({
               </button>
             );
           })}
-          <span className="text-xs text-zinc-400">occurrences</span>
+
           {selectedDates.length > 0 && (
             <button
               type="button"
               disabled={disabled}
-              onClick={() => onChangeSelectedDates([])}
+              onClick={() => {
+                setCustomCountInput('');
+                onChangeSelectedDates([]);
+              }}
               className="ml-1 text-xs font-medium text-zinc-400 underline-offset-2 hover:text-zinc-200 hover:underline"
             >
               Clear
@@ -115,24 +257,87 @@ export function RecurrenceCustomDatePicker({
         </div>
       </div>
 
-      {/* 3-Month Mini-Calendar Grid */}
+      {/* Multi-Month Mini-Calendar Grid */}
       <div className="grid gap-3 sm:grid-cols-3">
         {calendarMonths.map((monthStart) => {
           const monthKey = format(monthStart, 'yyyy-MM');
+          const monthLabel = format(monthStart, 'MMM yyyy');
           const daysInMonth = eachDayOfInterval({
             start: monthStart,
             end: endOfMonth(monthStart),
           });
           const leadingBlanks = getMondayBasedOffset(monthStart);
 
+          // Occurrences falling within this month
+          const monthOccurrenceDates = daysInMonth
+            .map((d) => toApiDate(d))
+            .filter((dateStr) => occurrenceSet.has(dateStr));
+          const selectedInMonthCount = monthOccurrenceDates.filter((dateStr) =>
+            selectedDates.includes(dateStr),
+          ).length;
+          const hasMonthOccurrences = monthOccurrenceDates.length > 0;
+          const isAllMonthSelected =
+            hasMonthOccurrences && selectedInMonthCount === monthOccurrenceDates.length;
+          const isPartialMonthSelected =
+            selectedInMonthCount > 0 && !isAllMonthSelected;
+
           return (
             <div
               key={monthKey}
-              className="rounded-lg border border-dark-border/80 bg-dark-surface/70 p-2.5"
+              className={cn(
+                'rounded-lg border p-2.5 transition-colors',
+                isAllMonthSelected
+                  ? isDanger
+                    ? 'border-red-500/40 bg-red-500/5'
+                    : 'border-indigo-500/40 bg-indigo-500/5'
+                  : 'border-dark-border/80 bg-dark-surface/70',
+              )}
             >
-              <div className="mb-2 flex items-center justify-center gap-1 text-xs font-semibold text-zinc-200">
-                <CalendarDays className="h-3.5 w-3.5 text-zinc-400" aria-hidden="true" />
-                <span>{format(monthStart, 'MMM yyyy')}</span>
+              {/* Month Header with Tick / Select-All Toggle */}
+              <div className="mb-2 flex items-center justify-between gap-1.5">
+                {hasMonthOccurrences ? (
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => toggleMonthOccurrences(monthOccurrenceDates)}
+                    aria-label={`${isAllMonthSelected ? 'Deselect' : 'Select'} all occurrences in ${monthLabel}`}
+                    aria-pressed={isAllMonthSelected}
+                    title={`Click to ${isAllMonthSelected ? 'deselect' : 'select'} all ${monthOccurrenceDates.length} occurrences in ${monthLabel}`}
+                    className="group flex flex-1 items-center justify-between rounded-md px-1.5 py-1 text-xs font-semibold text-zinc-200 transition-colors hover:bg-dark-hover"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span
+                        className={cn(
+                          'flex h-4 w-4 items-center justify-center rounded border transition-colors',
+                          isAllMonthSelected
+                            ? isDanger
+                              ? 'border-red-400 bg-red-500 text-white'
+                              : 'border-indigo-400 bg-indigo-500 text-white'
+                            : isPartialMonthSelected
+                              ? isDanger
+                                ? 'border-red-400/70 bg-red-500/20 text-red-200'
+                                : 'border-indigo-400/70 bg-indigo-500/20 text-indigo-200'
+                              : 'border-zinc-600 bg-dark-bg group-hover:border-zinc-400',
+                        )}
+                      >
+                        {isAllMonthSelected && <Check className="h-3 w-3" aria-hidden="true" />}
+                        {isPartialMonthSelected && (
+                          <Minus className="h-3 w-3" aria-hidden="true" />
+                        )}
+                      </span>
+                      <span>{monthLabel}</span>
+                    </span>
+
+                    <span className="rounded-full bg-dark-bg/80 px-1.5 py-0.5 font-mono text-[10px] font-medium text-zinc-400">
+                      {selectedInMonthCount}/{monthOccurrenceDates.length}
+                    </span>
+                  </button>
+                ) : (
+                  <div className="flex flex-1 items-center justify-center gap-1 py-1 text-xs font-semibold text-zinc-500">
+                    <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>{monthLabel}</span>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-zinc-500">
@@ -189,8 +394,37 @@ export function RecurrenceCustomDatePicker({
         })}
       </div>
 
+      {/* Show More / Show Fewer Months Controls */}
+      <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+        {canShowMoreMonths && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() =>
+              setMonthsToShow((prev) => Math.min(MAX_MONTHS_TO_SHOW, prev + MONTHS_STEP))
+            }
+            className="inline-flex items-center gap-1.5 rounded-lg border border-dark-border bg-dark-surface px-3 py-1.5 text-xs font-medium text-zinc-200 transition-colors hover:border-indigo-400/50 hover:text-white"
+          >
+            <ChevronDown className="h-3.5 w-3.5 text-indigo-400" aria-hidden="true" />
+            <span>Show more months (+{MONTHS_STEP})</span>
+          </button>
+        )}
+
+        {monthsToShow > INITIAL_MONTHS_TO_SHOW && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setMonthsToShow(INITIAL_MONTHS_TO_SHOW)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-dark-border bg-dark-bg px-3 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-200"
+          >
+            <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Show fewer months</span>
+          </button>
+        )}
+      </div>
+
       {/* Selected dates summary */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-zinc-400">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-dark-border/70 pt-2.5 text-xs text-zinc-400">
         <span>
           <strong className="font-semibold text-zinc-200">{selectedDates.length}</strong>{' '}
           {selectedDates.length === 1 ? 'occurrence' : 'occurrences'} selected
@@ -309,7 +543,8 @@ function ScopeModalBody({
     {
       id: 'CUSTOM',
       label: 'Custom (Pick dates to delete/edit)',
-      description: 'Pick specific occurrences from the next 3 months or batch-select with one click.',
+      description:
+        'Enter how many occurrences to select, tick whole months, or pick specific dates.',
     },
   ];
 
@@ -365,6 +600,7 @@ function ScopeModalBody({
       {/* Custom Mini-Calendar & Quick-Select Toolbar */}
       {choice === 'CUSTOM' && (
         <RecurrenceCustomDatePicker
+          event={event}
           currentOccurrenceDate={currentOccurrenceDate}
           upcomingOccurrences={upcomingOccurrences}
           selectedDates={selectedDates}

@@ -26,13 +26,29 @@ import {
   type EventSlotRange,
 } from '../components/calendar/EventFormModal';
 import { EventDetailModal } from '../components/calendar/EventDetailModal';
+import { RecurrenceScopeModal } from '../components/calendar/RecurrenceScopeModal';
 import { useCategories } from '../hooks/useCategories';
-import { useEventsInRange, useUpdateEvent } from '../hooks/useEvents';
+import {
+  useEventsInRange,
+  useUpdateEvent,
+  useUpdateEventWithScope,
+} from '../hooks/useEvents';
 import { useToast } from '../hooks/useToast';
+import { getErrorMessage } from '../utils/errors';
 import { fromApiDateTime, toApiDateTime } from '../utils/date';
 import { DEFAULT_EVENT_COLOR, normalizeHexColor, withAlpha } from '../utils/colors';
 import type { DateRangeParams } from '../types/api';
-import type { EventResponseDTO } from '../types/event';
+import type {
+  EventRequestDTO,
+  EventResponseDTO,
+  EventScopeRequestDTO,
+} from '../types/event';
+
+interface PendingRescheduleState {
+  event: EventResponseDTO;
+  updateData: EventRequestDTO;
+  revert: () => void;
+}
 
 /**
  * Custom event card inside FullCalendar.
@@ -173,11 +189,13 @@ export function CalendarPage() {
   const [visibleRange, setVisibleRange] = useState<DateRangeParams | null>(null);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
 
-  // Modal state: creating/editing vs viewing details
+  // Modal state: creating/editing vs viewing details vs confirming recurring drag/resize
   const [formOpen, setFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventResponseDTO | null>(null);
   const [initialSlot, setInitialSlot] = useState<EventSlotRange | null>(null);
   const [viewingEvent, setViewingEvent] = useState<EventResponseDTO | null>(null);
+  const [pendingReschedule, setPendingReschedule] = useState<PendingRescheduleState | null>(null);
+  const [rescheduleScopeError, setRescheduleScopeError] = useState<string | null>(null);
 
   const { data: categories = [] } = useCategories();
   const {
@@ -191,6 +209,7 @@ export function CalendarPage() {
 
   // Used for drag-to-reschedule and resize (let MutationCache toast any server error)
   const rescheduleMutation = useUpdateEvent({ handlesErrorInline: false });
+  const rescheduleScopeMutation = useUpdateEventWithScope({ handlesErrorInline: true });
 
   // Called by FullCalendar on mount and whenever the user navigates or switches view
   const handleDatesSet = (arg: DatesSetArg) => {
@@ -275,7 +294,9 @@ export function CalendarPage() {
     if (dto) setViewingEvent(dto);
   };
 
-  // Drag-to-reschedule or resize-to-change-duration: sends PUT with the FULL event body
+  // Drag-to-reschedule or resize-to-change-duration:
+  // - Non-recurring events: sends PUT immediately with the FULL event body
+  // - Recurring events: opens RecurrenceScopeModal so the user can choose which occurrences to update
   const handleEventMoveOrResize = async (arg: EventDropArg | EventResizeDoneArg) => {
     const dto = arg.event.extendedProps.dto as EventResponseDTO | undefined;
     const newStart = arg.event.start;
@@ -286,30 +307,67 @@ export function CalendarPage() {
       return;
     }
 
+    const isRecurring = Boolean(dto.recurrenceType && dto.recurrenceType !== 'NONE');
+    const updatedBody: EventRequestDTO = {
+      title: dto.title,
+      ...(dto.description ? { description: dto.description } : {}),
+      startTime: toApiDateTime(newStart),
+      endTime: toApiDateTime(newEnd),
+      isFlexible: dto.isFlexible,
+      categoryIds: dto.categories.map((c) => c.categoryId),
+      isPrivate: dto.isPrivate,
+      ...(isRecurring
+        ? {
+            recurrenceType: dto.recurrenceType,
+            recurrenceEndDate: dto.recurrenceEndDate ?? null,
+          }
+        : {}),
+    };
+
+    if (isRecurring) {
+      setRescheduleScopeError(null);
+      setPendingReschedule({
+        event: dto,
+        updateData: updatedBody,
+        revert: () => arg.revert(),
+      });
+      return;
+    }
+
     try {
       await rescheduleMutation.mutateAsync({
         eventId: dto.eventId,
-        body: {
-          title: dto.title,
-          ...(dto.description ? { description: dto.description } : {}),
-          startTime: toApiDateTime(newStart),
-          endTime: toApiDateTime(newEnd),
-          isFlexible: dto.isFlexible,
-          categoryIds: dto.categories.map((c) => c.categoryId),
-          isPrivate: dto.isPrivate,
-          ...(dto.recurrenceType && dto.recurrenceType !== 'NONE'
-            ? {
-                recurrenceType: dto.recurrenceType,
-                recurrenceEndDate: dto.recurrenceEndDate ?? null,
-              }
-            : {}),
-        },
+        body: updatedBody,
       });
       toast.success(`Rescheduled "${dto.title}"`);
     } catch {
       // Roll the event visually back to its original slot if the server rejects it
       arg.revert();
     }
+  };
+
+  const handleConfirmRescheduleWithScope = async (scopePayload: EventScopeRequestDTO) => {
+    if (!pendingReschedule) return;
+    setRescheduleScopeError(null);
+
+    try {
+      await rescheduleScopeMutation.mutateAsync({
+        eventId: pendingReschedule.event.eventId,
+        body: scopePayload,
+      });
+      toast.success(`Rescheduled "${pendingReschedule.event.title}"`);
+      setPendingReschedule(null);
+    } catch (err) {
+      setRescheduleScopeError(getErrorMessage(err));
+    }
+  };
+
+  const handleCancelRescheduleWithScope = () => {
+    if (pendingReschedule) {
+      pendingReschedule.revert();
+    }
+    setPendingReschedule(null);
+    setRescheduleScopeError(null);
   };
 
   return (
@@ -426,6 +484,18 @@ export function CalendarPage() {
         event={editingEvent}
         initialSlot={initialSlot}
         categories={categories}
+      />
+
+      {/* Scoped confirmation dialog when a recurring event is dragged/resized on the calendar */}
+      <RecurrenceScopeModal
+        isOpen={pendingReschedule !== null}
+        onClose={handleCancelRescheduleWithScope}
+        mode="edit"
+        event={pendingReschedule?.event ?? null}
+        updateData={pendingReschedule?.updateData ?? null}
+        onConfirm={handleConfirmRescheduleWithScope}
+        isLoading={rescheduleScopeMutation.isPending}
+        errorMessage={rescheduleScopeError}
       />
     </div>
   );

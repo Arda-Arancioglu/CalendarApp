@@ -170,10 +170,10 @@ public class EventService {
 
         EventResponseDTO myResponse = mapToDTO(task);
 
+        taskExceptionRepository.deleteByTask_TaskId(id);
+        taskCategoriesRepository.deleteByTask_TaskId(id);
         userTasksRepository.deleteByTask_TaskId(id);
         taskRepository.delete(task);
-        //Delete and not deleteByID because OPTIMIZATIONN :D
-        taskCategoriesRepository.deleteByTask_TaskId(id);
 
         return  myResponse;
     }

@@ -455,6 +455,7 @@ function EventFormBody({
 
           {scopeChoice === 'CUSTOM' && (
             <RecurrenceCustomDatePicker
+              event={event ?? undefined}
               currentOccurrenceDate={currentOccurrenceDate}
               upcomingOccurrences={upcomingOccurrences}
               selectedDates={selectedCustomDates}
