@@ -55,8 +55,8 @@ public record EventRequestDTO (
                 if (categoryIds == null){
                         categoryIds = Set.of();
                 }
-                if(recurrenceEndDate==null){
-                        recurrenceType=RecurrenceType.NONE;
+                if (recurrenceType == null) {
+                        recurrenceType = RecurrenceType.NONE;
                 }
 
         }

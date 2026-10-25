@@ -281,7 +281,7 @@ export function SquadCalendarPage() {
         };
 
         eventsOut.push({
-          id: `member-${memberBlock.userId}-task-${ev.taskId}`,
+          id: `member-${memberBlock.userId}-task-${ev.taskId}-${ev.startTime}`,
           title: `${memberBlock.username}: ${displayTitle}`,
           start,
           end,

@@ -12,7 +12,7 @@ import type {
   EventInput,
 } from '@fullcalendar/core';
 import { addHours, setHours, setMinutes } from 'date-fns';
-import { Lock, Plus, Repeat } from 'lucide-react';
+import { Lock, Plus, RefreshCw, Repeat } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Spinner } from '../components/ui/Spinner';
@@ -45,11 +45,14 @@ function renderPersonalEventContent(arg: EventContentArg) {
   const color = (arg.event.extendedProps.primaryColor as string | undefined) ?? DEFAULT_EVENT_COLOR;
   const isFlexible = dto?.isFlexible ?? false;
   const isPrivate = dto?.isPrivate ?? false;
+  const isRecurring = Boolean(dto?.recurrenceType && dto.recurrenceType !== 'NONE');
+  const eventKey = String(dto?.occurrenceId || dto?.eventId || arg.event.id);
   const isTimeGrid = arg.view.type.startsWith('timeGrid');
 
   if (isTimeGrid) {
     return (
       <div
+        key={eventKey}
         className="flex h-full w-full flex-col justify-between overflow-hidden rounded-[5px] px-2 py-1 text-xs leading-snug text-zinc-50"
         style={{
           backgroundColor: withAlpha(color, 0.34),
@@ -67,6 +70,12 @@ function renderPersonalEventContent(arg: EventContentArg) {
               </span>
             )}
             <span className="flex shrink-0 items-center gap-1">
+              {isRecurring && (
+                <RefreshCw
+                  className="h-3 w-3 text-indigo-200"
+                  aria-label="Recurring event"
+                />
+              )}
               {isFlexible && (
                 <Repeat
                   className="h-3 w-3 text-amber-300"
@@ -107,6 +116,7 @@ function renderPersonalEventContent(arg: EventContentArg) {
 
   return (
     <div
+      key={eventKey}
       className="flex w-full items-center gap-1.5 overflow-hidden rounded-xs px-1.5 py-0.5 text-xs leading-tight text-zinc-50"
       style={{
         backgroundColor: withAlpha(color, 0.28),
@@ -123,6 +133,12 @@ function renderPersonalEventContent(arg: EventContentArg) {
       )}
       <span className="truncate font-medium">{arg.event.title}</span>
       <span className="ml-auto flex shrink-0 items-center gap-1">
+        {isRecurring && (
+          <RefreshCw
+            className="h-3 w-3 text-indigo-200"
+            aria-label="Recurring event"
+          />
+        )}
         {isFlexible && (
           <Repeat
             className="h-3 w-3 text-amber-300"
@@ -191,7 +207,7 @@ export function CalendarPage() {
     return filteredEvents.map((ev) => {
       const primaryColor = normalizeHexColor(ev.categories[0]?.color ?? DEFAULT_EVENT_COLOR);
       return {
-        id: String(ev.eventId),
+        id: String(ev.occurrenceId || ev.eventId),
         title: ev.title,
         start: fromApiDateTime(ev.startTime),
         end: fromApiDateTime(ev.endTime),
@@ -269,6 +285,12 @@ export function CalendarPage() {
           isFlexible: dto.isFlexible,
           categoryIds: dto.categories.map((c) => c.categoryId),
           isPrivate: dto.isPrivate,
+          ...(dto.recurrenceType && dto.recurrenceType !== 'NONE'
+            ? {
+                recurrenceType: dto.recurrenceType,
+                recurrenceEndDate: dto.recurrenceEndDate ?? null,
+              }
+            : {}),
         },
       });
       toast.success(`Rescheduled "${dto.title}"`);

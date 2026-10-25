@@ -1,24 +1,32 @@
 import { request } from './client';
 import type { DateRangeParams } from '../types/api';
-import type { EventRequestDTO, EventResponseDTO } from '../types/event';
+import type {
+  EventRequestDTO,
+  EventResponseDTO,
+  EventScopeRequestDTO,
+} from '../types/event';
 
 /**
  * Raw shape returned by the backend's `EventResponseDTO` Java record, which
  * currently sends `taskId` instead of `eventId`. We normalize so `eventId`
- * is always populated (fixing `/api/events/undefined`).
+ * and `occurrenceId` are always populated.
  */
 type RawEventDTO = Omit<EventResponseDTO, 'eventId'> & {
   eventId?: number;
   taskId?: number;
   id?: number;
+  occurrenceId?: string;
+  occurenceId?: string;
 };
 
 function normalizeEvent(raw: RawEventDTO): EventResponseDTO {
   const resolvedId = raw.eventId ?? raw.taskId ?? raw.id ?? 0;
+  const resolvedOccurrenceId = raw.occurrenceId ?? raw.occurenceId;
   return {
     ...raw,
     eventId: resolvedId,
     taskId: resolvedId,
+    ...(resolvedOccurrenceId !== undefined ? { occurrenceId: resolvedOccurrenceId } : {}),
     categories: Array.isArray(raw.categories) ? raw.categories : [],
   };
 }
@@ -61,4 +69,26 @@ export async function updateEvent(
 export async function deleteEvent(eventId: number): Promise<EventResponseDTO> {
   const raw = await request<RawEventDTO>(`/events/${eventId}`, { method: 'DELETE' });
   return normalizeEvent(raw);
+}
+
+/** Scoped delete for recurring events (`DELETE /api/events/{id}/scope`). */
+export async function deleteEventWithScope(
+  eventId: number,
+  body: EventScopeRequestDTO,
+): Promise<void> {
+  await request<void>(`/events/${eventId}/scope`, {
+    method: 'DELETE',
+    body,
+  });
+}
+
+/** Scoped update for recurring events (`PUT /api/events/{id}/scope`). */
+export async function updateEventWithScope(
+  eventId: number,
+  body: EventScopeRequestDTO,
+): Promise<void> {
+  await request<void>(`/events/${eventId}/scope`, {
+    method: 'PUT',
+    body,
+  });
 }

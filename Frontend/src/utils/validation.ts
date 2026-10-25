@@ -1,4 +1,4 @@
-import { isValid, startOfToday } from 'date-fns';
+import { isValid, startOfDay, startOfToday } from 'date-fns';
 import { z } from 'zod';
 import { fromApiDate, fromInputDateTime } from './date';
 
@@ -108,6 +108,14 @@ export type CategoryFormValues = z.infer<typeof categorySchema>;
 
 // ---- Event schema ----
 
+export const recurrenceTypeSchema = z.enum([
+  'NONE',
+  'DAILY',
+  'WEEKLY',
+  'MONTHLY',
+  'YEARLY',
+]);
+
 export const eventSchema = z
   .object({
     title: z
@@ -132,6 +140,9 @@ export const eventSchema = z
     isFlexible: z.boolean(),
     isPrivate: z.boolean(),
     categoryIds: z.array(z.number()),
+    recurrenceType: recurrenceTypeSchema,
+    repeatForever: z.boolean(),
+    recurrenceEndDate: z.string(),
   })
   .refine(
     (values) => {
@@ -142,6 +153,23 @@ export const eventSchema = z
     {
       message: 'End time must be after start time',
       path: ['endTime'],
+    },
+  )
+  .refine(
+    (values) => {
+      if (values.recurrenceType === 'NONE' || values.repeatForever) {
+        return true;
+      }
+      const trimmed = values.recurrenceEndDate.trim();
+      if (!trimmed) return false;
+      const endDate = fromApiDate(trimmed);
+      const start = fromInputDateTime(values.startTime);
+      if (!isValid(endDate) || !isValid(start)) return false;
+      return startOfDay(endDate).getTime() >= startOfDay(start).getTime();
+    },
+    {
+      message: 'Ends on date must be on or after the start date',
+      path: ['recurrenceEndDate'],
     },
   );
 export type EventFormValues = z.infer<typeof eventSchema>;

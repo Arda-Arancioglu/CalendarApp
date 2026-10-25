@@ -2,7 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import * as eventsApi from '../api/events';
 import { queryKeys } from './queryKeys';
 import type { DateRangeParams } from '../types/api';
-import type { EventRequestDTO } from '../types/event';
+import type { EventRequestDTO, EventScopeRequestDTO } from '../types/event';
 
 /**
  * Fetch events inside the calendar's visible range (`?start=...&end=...`).
@@ -79,6 +79,40 @@ export function useDeleteEvent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (eventId: number) => eventsApi.deleteEvent(eventId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.squads.all });
+    },
+  });
+}
+
+/**
+ * Scoped delete for recurring events (`DELETE /api/events/{id}/scope`).
+ */
+export function useDeleteEventWithScope(options: { handlesErrorInline?: boolean } = {}) {
+  const queryClient = useQueryClient();
+  const { handlesErrorInline = false } = options;
+  return useMutation({
+    mutationFn: ({ eventId, body }: { eventId: number; body: EventScopeRequestDTO }) =>
+      eventsApi.deleteEventWithScope(eventId, body),
+    meta: { handlesErrorInline },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.squads.all });
+    },
+  });
+}
+
+/**
+ * Scoped update for recurring events (`PUT /api/events/{id}/scope`).
+ */
+export function useUpdateEventWithScope(options: { handlesErrorInline?: boolean } = {}) {
+  const queryClient = useQueryClient();
+  const { handlesErrorInline = true } = options;
+  return useMutation({
+    mutationFn: ({ eventId, body }: { eventId: number; body: EventScopeRequestDTO }) =>
+      eventsApi.updateEventWithScope(eventId, body),
+    meta: { handlesErrorInline },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.squads.all });

@@ -1,19 +1,53 @@
 import { useState } from 'react';
-import { CalendarClock, FileText, Lock, Pencil, Repeat, Tags, Trash2 } from 'lucide-react';
+import {
+  CalendarClock,
+  FileText,
+  Lock,
+  Pencil,
+  RefreshCw,
+  Repeat,
+  Tags,
+  Trash2,
+} from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
-import { useDeleteEvent } from '../../hooks/useEvents';
+import { RecurrenceScopeModal } from './RecurrenceScopeModal';
+import { useDeleteEvent, useDeleteEventWithScope } from '../../hooks/useEvents';
 import { useToast } from '../../hooks/useToast';
-import { formatDateTime } from '../../utils/date';
+import { formatDate, formatDateTime } from '../../utils/date';
+import { getErrorMessage } from '../../utils/errors';
 import { DEFAULT_EVENT_COLOR, normalizeHexColor, withAlpha } from '../../utils/colors';
-import type { EventResponseDTO } from '../../types/event';
+import type {
+  EventResponseDTO,
+  EventScopeRequestDTO,
+  RecurrenceType,
+} from '../../types/event';
 
 interface EventDetailModalProps {
   event: EventResponseDTO | null;
   onClose: () => void;
   onEdit: (event: EventResponseDTO) => void;
+}
+
+function formatRecurrenceBadge(
+  recurrenceType?: RecurrenceType,
+  recurrenceEndDate?: string | null,
+): string | null {
+  if (!recurrenceType || recurrenceType === 'NONE') return null;
+  const labelMap: Record<Exclude<RecurrenceType, 'NONE'>, string> = {
+    DAILY: 'Repeats daily',
+    WEEKLY: 'Repeats weekly',
+    MONTHLY: 'Repeats monthly',
+    YEARLY: 'Repeats yearly',
+  };
+  const base = labelMap[recurrenceType];
+  if (recurrenceEndDate && recurrenceEndDate.trim() !== '') {
+    const formattedEnd = formatDate(recurrenceEndDate);
+    return formattedEnd ? `${base} (until ${formattedEnd})` : `${base} (until ${recurrenceEndDate})`;
+  }
+  return base;
 }
 
 /**
@@ -23,15 +57,24 @@ interface EventDetailModalProps {
 export function EventDetailModal({ event, onClose, onEdit }: EventDetailModalProps) {
   const toast = useToast();
   const deleteMutation = useDeleteEvent();
+  const deleteScopeMutation = useDeleteEventWithScope({ handlesErrorInline: true });
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [scopeDeleteOpen, setScopeDeleteOpen] = useState(false);
+  const [scopeError, setScopeError] = useState<string | null>(null);
 
   if (!event) return null;
+
+  const isRecurring = Boolean(event.recurrenceType && event.recurrenceType !== 'NONE');
+  const recurrenceLabel = formatRecurrenceBadge(
+    event.recurrenceType,
+    event.recurrenceEndDate,
+  );
 
   const primaryColor = normalizeHexColor(
     event.categories[0]?.color ?? DEFAULT_EVENT_COLOR,
   );
 
-  const handleDelete = async () => {
+  const handleDeleteNonRecurring = async () => {
     try {
       await deleteMutation.mutateAsync(event.eventId);
       toast.success(`Deleted "${event.title}"`);
@@ -39,6 +82,21 @@ export function EventDetailModal({ event, onClose, onEdit }: EventDetailModalPro
       onClose();
     } catch {
       // MutationCache already shows the server error toast.
+    }
+  };
+
+  const handleDeleteWithScope = async (scopePayload: EventScopeRequestDTO) => {
+    setScopeError(null);
+    try {
+      await deleteScopeMutation.mutateAsync({
+        eventId: event.eventId,
+        body: scopePayload,
+      });
+      toast.success(`Deleted "${event.title}"`);
+      setScopeDeleteOpen(false);
+      onClose();
+    } catch (error) {
+      setScopeError(getErrorMessage(error));
     }
   };
 
@@ -63,9 +121,15 @@ export function EventDetailModal({ event, onClose, onEdit }: EventDetailModalPro
             </div>
           </div>
 
-          {/* Flags: Private / Flexible */}
-          {(event.isPrivate || event.isFlexible) && (
+          {/* Flags: Recurring / Private / Flexible */}
+          {(isRecurring || event.isPrivate || event.isFlexible) && (
             <div className="flex flex-wrap items-center gap-2">
+              {recurrenceLabel && (
+                <Badge variant="indigo" title={recurrenceLabel}>
+                  <RefreshCw className="h-3 w-3" aria-hidden="true" />
+                  {recurrenceLabel}
+                </Badge>
+              )}
               {event.isPrivate && (
                 <Badge
                   variant="zinc"
@@ -138,7 +202,14 @@ export function EventDetailModal({ event, onClose, onEdit }: EventDetailModalPro
             <Button
               variant="danger"
               size="sm"
-              onClick={() => setConfirmDeleteOpen(true)}
+              onClick={() => {
+                setScopeError(null);
+                if (isRecurring) {
+                  setScopeDeleteOpen(true);
+                } else {
+                  setConfirmDeleteOpen(true);
+                }
+              }}
               leftIcon={<Trash2 className="h-4 w-4" aria-hidden="true" />}
             >
               Delete
@@ -164,7 +235,7 @@ export function EventDetailModal({ event, onClose, onEdit }: EventDetailModalPro
       <ConfirmDialog
         isOpen={confirmDeleteOpen}
         onClose={() => setConfirmDeleteOpen(false)}
-        onConfirm={() => void handleDelete()}
+        onConfirm={() => void handleDeleteNonRecurring()}
         title="Delete event?"
         confirmLabel="Delete event"
         isLoading={deleteMutation.isPending}
@@ -175,6 +246,19 @@ export function EventDetailModal({ event, onClose, onEdit }: EventDetailModalPro
             undone.
           </p>
         }
+      />
+
+      <RecurrenceScopeModal
+        isOpen={scopeDeleteOpen}
+        onClose={() => {
+          setScopeDeleteOpen(false);
+          setScopeError(null);
+        }}
+        mode="delete"
+        event={event}
+        onConfirm={handleDeleteWithScope}
+        isLoading={deleteScopeMutation.isPending}
+        errorMessage={scopeError}
       />
     </>
   );
