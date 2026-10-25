@@ -14,10 +14,10 @@ import {
   ArrowLeft,
   CalendarClock,
   EyeOff,
-  Repeat,
   Settings2,
   Sparkles,
   User,
+  Waves,
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
@@ -110,7 +110,9 @@ function renderSquadEventContent(arg: EventContentArg) {
                 <EyeOff className="h-3 w-3 text-zinc-300" aria-label="Busy (details hidden)" />
               )}
               {isFlexible && (
-                <Repeat className="h-3 w-3 text-amber-300" aria-label="Flexible time" />
+                <span title="Flexible time" className="inline-flex">
+                  <Waves className="h-3 w-3 text-amber-300" aria-label="Flexible time" />
+                </span>
               )}
             </span>
           </div>
@@ -154,7 +156,9 @@ function renderSquadEventContent(arg: EventContentArg) {
         {displayTitle}
       </span>
       {isFlexible && (
-        <Repeat className="ml-auto h-3 w-3 shrink-0 text-amber-300" aria-label="Flexible time" />
+        <span title="Flexible time" className="ml-auto inline-flex shrink-0">
+          <Waves className="h-3 w-3 text-amber-300" aria-label="Flexible time" />
+        </span>
       )}
     </div>
   );
@@ -501,8 +505,8 @@ export function SquadCalendarPage() {
                 </Badge>
               )}
               {selectedEvent.isFlexible && (
-                <Badge variant="amber">
-                  <Repeat className="h-3 w-3" aria-hidden="true" />
+                <Badge variant="amber" title="Flexible time">
+                  <Waves className="h-3 w-3" aria-hidden="true" />
                   Flexible time
                 </Badge>
               )}

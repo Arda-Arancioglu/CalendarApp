@@ -2,7 +2,7 @@ import { useId, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addHours, startOfHour } from 'date-fns';
-import { Infinity as InfinityIcon, Layers, Lock, RefreshCw, Repeat } from 'lucide-react';
+import { Infinity as InfinityIcon, Layers, Lock, Repeat, Waves } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
@@ -311,7 +311,7 @@ function EventFormBody({
             htmlFor={repeatSelectId}
             className="flex items-center gap-1.5 text-sm font-medium text-zinc-300"
           >
-            <RefreshCw className="h-3.5 w-3.5 text-indigo-400" aria-hidden="true" />
+            <Repeat className="h-3.5 w-3.5 text-indigo-400" aria-hidden="true" />
             <span>Repeat</span>
           </label>
           <select
@@ -391,7 +391,7 @@ function EventFormBody({
           }
           label="Flexible time"
           description="Can be moved if needed (shown with a dashed border)."
-          icon={<Repeat className="h-4 w-4" aria-hidden="true" />}
+          icon={<Waves className="h-4 w-4" aria-hidden="true" />}
           disabled={isSubmitting}
         />
         <Toggle

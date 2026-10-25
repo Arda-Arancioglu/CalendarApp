@@ -4,10 +4,10 @@ import {
   FileText,
   Lock,
   Pencil,
-  RefreshCw,
   Repeat,
   Tags,
   Trash2,
+  Waves,
 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -125,8 +125,8 @@ export function EventDetailModal({ event, onClose, onEdit }: EventDetailModalPro
           {(isRecurring || event.isPrivate || event.isFlexible) && (
             <div className="flex flex-wrap items-center gap-2">
               {recurrenceLabel && (
-                <Badge variant="indigo" title={recurrenceLabel}>
-                  <RefreshCw className="h-3 w-3" aria-hidden="true" />
+                <Badge variant="indigo" title="Recurring series">
+                  <Repeat className="h-3 w-3" aria-hidden="true" />
                   {recurrenceLabel}
                 </Badge>
               )}
@@ -141,7 +141,7 @@ export function EventDetailModal({ event, onClose, onEdit }: EventDetailModalPro
               )}
               {event.isFlexible && (
                 <Badge variant="amber" title="Flexible time">
-                  <Repeat className="h-3 w-3" aria-hidden="true" />
+                  <Waves className="h-3 w-3" aria-hidden="true" />
                   Flexible time
                 </Badge>
               )}

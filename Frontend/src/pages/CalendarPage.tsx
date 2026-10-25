@@ -12,7 +12,7 @@ import type {
   EventInput,
 } from '@fullcalendar/core';
 import { addHours, setHours, setMinutes } from 'date-fns';
-import { Lock, Plus, RefreshCw, Repeat } from 'lucide-react';
+import { Lock, Plus, Repeat, Waves } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Spinner } from '../components/ui/Spinner';
@@ -71,22 +71,28 @@ function renderPersonalEventContent(arg: EventContentArg) {
             )}
             <span className="flex shrink-0 items-center gap-1">
               {isRecurring && (
-                <RefreshCw
-                  className="h-3 w-3 text-indigo-200"
-                  aria-label="Recurring event"
-                />
+                <span title="Recurring series" className="inline-flex">
+                  <Repeat
+                    className="h-3 w-3 text-indigo-200"
+                    aria-label="Recurring series"
+                  />
+                </span>
               )}
               {isFlexible && (
-                <Repeat
-                  className="h-3 w-3 text-amber-300"
-                  aria-label="Flexible event"
-                />
+                <span title="Flexible time" className="inline-flex">
+                  <Waves
+                    className="h-3 w-3 text-amber-300"
+                    aria-label="Flexible time"
+                  />
+                </span>
               )}
               {isPrivate && (
-                <Lock
-                  className="h-3 w-3 text-zinc-100"
-                  aria-label="Private event"
-                />
+                <span title="Private event" className="inline-flex">
+                  <Lock
+                    className="h-3 w-3 text-zinc-100"
+                    aria-label="Private event"
+                  />
+                </span>
               )}
             </span>
           </div>
@@ -134,22 +140,28 @@ function renderPersonalEventContent(arg: EventContentArg) {
       <span className="truncate font-medium">{arg.event.title}</span>
       <span className="ml-auto flex shrink-0 items-center gap-1">
         {isRecurring && (
-          <RefreshCw
-            className="h-3 w-3 text-indigo-200"
-            aria-label="Recurring event"
-          />
+          <span title="Recurring series" className="inline-flex">
+            <Repeat
+              className="h-3 w-3 text-indigo-200"
+              aria-label="Recurring series"
+            />
+          </span>
         )}
         {isFlexible && (
-          <Repeat
-            className="h-3 w-3 text-amber-300"
-            aria-label="Flexible event"
-          />
+          <span title="Flexible time" className="inline-flex">
+            <Waves
+              className="h-3 w-3 text-amber-300"
+              aria-label="Flexible time"
+            />
+          </span>
         )}
         {isPrivate && (
-          <Lock
-            className="h-3 w-3 text-zinc-200"
-            aria-label="Private event"
-          />
+          <span title="Private event" className="inline-flex">
+            <Lock
+              className="h-3 w-3 text-zinc-200"
+              aria-label="Private event"
+            />
+          </span>
         )}
       </span>
     </div>
