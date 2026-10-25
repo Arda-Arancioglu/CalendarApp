@@ -5,10 +5,7 @@ import com.aa.calendar.dto.UpdateRoleRequestDTO;
 import com.aa.calendar.dto.UpdateVisibilityRequestDTO;
 import com.aa.calendar.entity.*;
 import com.aa.calendar.exception.AccessDeniedException;
-import com.aa.calendar.repository.SquadMembersRepository;
-import com.aa.calendar.repository.TaskRepository;
-import com.aa.calendar.repository.UserRepository;
-import com.aa.calendar.repository.UserTasksRepository;
+import com.aa.calendar.repository.*;
 import jakarta.validation.constraints.Null;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -46,6 +43,9 @@ class SquadServiceTest {
 
    @Mock
    private RecurrenceExpander recurrenceExpander;
+
+    @Mock
+    private TaskExceptionRepository taskExceptionRepository;
 
    @InjectMocks
    private SquadService squadService;

@@ -37,6 +37,8 @@ public class EventServiceTest {
     private TaskCategoriesRepository taskCategoriesRepository;
     @Mock
     private RecurrenceExpander recurrenceExpander;
+    @Mock
+    private TaskExceptionRepository taskExceptionRepository;
 
     @InjectMocks
     private EventService eventService;
@@ -167,7 +169,7 @@ public class EventServiceTest {
 
         when(taskRepository.findTasksForCalendarWindow(eq(USER_ID),any(),any(),any(),eq(RecurrenceType.NONE))).thenReturn(tasks);
 
-        when(recurrenceExpander.expandTask(any(), any(), any(), any()))
+        when(recurrenceExpander.expandTask(any(), any(), any(), any(),any()))
                 .thenReturn(List.of(mock(EventResponseDTO.class)));
 
         List<EventResponseDTO> myEvent = eventService.getEventsInRange(USER_ID,Time1,Time3.minusSeconds(1L));
