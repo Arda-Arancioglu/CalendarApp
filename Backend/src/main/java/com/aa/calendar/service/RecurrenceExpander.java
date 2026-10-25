@@ -4,13 +4,16 @@ import com.aa.calendar.dto.CategoryResponseDTO;
 import com.aa.calendar.dto.EventResponseDTO;
 import com.aa.calendar.entity.RecurrenceType;
 import com.aa.calendar.entity.Task;
+import com.aa.calendar.entity.TaskException;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Component
@@ -19,12 +22,15 @@ public class RecurrenceExpander {
     public List<EventResponseDTO> expandTask(Task task,
                                              Set<CategoryResponseDTO> categories,
                                              LocalDateTime windowStart,
-                                             LocalDateTime windowEnd) {
+                                             LocalDateTime windowEnd,
+                                             Map<LocalDate, TaskException> exceptionsMap) {
         List<EventResponseDTO> result = new ArrayList<>();
+
         if (task.getRecurrenceType() == null || task.getRecurrenceType() == RecurrenceType.NONE) {
             if(task.getEndTime().isAfter(windowStart) && task.getStartTime().isBefore(windowEnd)){
-                result.add(toDTO(task,task.getStartTime(),task.getEndTime(),categories));
+                result.add(toDTO(task,task.getStartTime(),task.getEndTime(),categories,task.getTitle(),task.getDescription()));
             }
+            return result;
         }
         Duration duration = Duration.between(task.getStartTime(), task.getEndTime());
         long firstK = calculateFirstK(task,windowStart);
@@ -43,8 +49,27 @@ public class RecurrenceExpander {
 
             LocalDateTime occEnd = occStart.plus(duration);
 
+            LocalDate occDate = occStart.toLocalDate();
+
+            if(exceptionsMap!= null && exceptionsMap.containsKey(occDate)){
+                TaskException exception = exceptionsMap.get(occDate);
+                if(exception.isCancelled()){
+                    continue;
+                }
+
+                LocalDateTime customStart = exception.getNewStartTime()!= null ? exception.getNewStartTime():occStart;
+                LocalDateTime customEnd = exception.getNewEndTime()!= null ? exception.getNewEndTime():occEnd;
+                String customTitle = exception.getNewTitle()!= null? exception.getNewTitle():task.getTitle();
+                String customDescription = exception.getNewDescription()!= null? exception.getNewDescription(): task.getDescription();
+
+                if(customEnd.isAfter(windowStart)&&customStart.isBefore(windowEnd)){
+                    result.add(toDTO(task,customStart,customEnd,categories,customTitle,customDescription));
+                }
+                continue;
+            }
+
             if (occEnd.isAfter(windowStart)){
-                result.add(toDTO(task,occStart,occEnd,categories));
+                result.add(toDTO(task,occStart,occEnd,categories,task.getTitle(),task.getDescription()));
             }
 
 
@@ -76,11 +101,14 @@ public class RecurrenceExpander {
 
 
     private EventResponseDTO toDTO(Task task, LocalDateTime start,
-                                   LocalDateTime end, Set<CategoryResponseDTO> categories) {
+                                   LocalDateTime end, Set<CategoryResponseDTO> categories,
+                                   String title, String description) {
+        String occurenceId = task.getTaskId()+"_"+start.toString();
         return new EventResponseDTO(
+                occurenceId,
                 task.getTaskId(),
-                task.getTitle(),
-                task.getDescription(),
+                title,
+                description,
                 start,
                 end,
                 task.isFlexible(),

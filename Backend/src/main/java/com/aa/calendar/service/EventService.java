@@ -11,9 +11,11 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -26,14 +28,20 @@ public class EventService {
     private final CategoryRepository categoryRepository;
     private  final TaskCategoriesRepository taskCategoriesRepository;
     private final RecurrenceExpander recurrenceExpander;
+    private final TaskExceptionRepository taskExceptionRepository;
 
-    public EventService(TaskRepository taskRepository , UserRepository userRepository ,UserTasksRepository userTasksRepository,CategoryRepository categoryRepository, TaskCategoriesRepository taskCategoriesRepository , RecurrenceExpander recurrenceExpander) {
+    public EventService(TaskRepository taskRepository , UserRepository userRepository ,
+                        UserTasksRepository userTasksRepository,CategoryRepository categoryRepository,
+                        TaskCategoriesRepository taskCategoriesRepository , RecurrenceExpander recurrenceExpander,
+                        TaskExceptionRepository taskExceptionRepository
+        ) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.userTasksRepository = userTasksRepository;
         this.categoryRepository = categoryRepository;
         this.taskCategoriesRepository = taskCategoriesRepository;
         this.recurrenceExpander = recurrenceExpander;
+        this.taskExceptionRepository = taskExceptionRepository;
     }
 
     @Transactional
@@ -91,13 +99,22 @@ public class EventService {
         RecurrenceType noneType = RecurrenceType.NONE;
         List<Task> tasks = taskRepository.findTasksForCalendarWindow(userId,start,end,start.toLocalDate(),noneType);
 
-
         List<EventResponseDTO> events = new ArrayList<>();
 
 
+        List<Long> taskIds = tasks.stream().map(Task::getTaskId).toList();
+        List<TaskException> allExceptions = taskExceptionRepository.findByTask_TaskIdIn(taskIds);
+
+        Map<Long, Map<LocalDate,TaskException>> exceptionsByTask = allExceptions.stream()
+                .collect(Collectors.groupingBy(
+                        te-> te.getTask().getTaskId(),
+                        Collectors.toMap(TaskException::getOriginalDate,te->te)
+                ));
+
         for (Task task : tasks) {
             Set<CategoryResponseDTO> categories = getCategoriesForTask(task.getTaskId());
-            events.addAll(recurrenceExpander.expandTask(task,categories,start,end));
+            Map<LocalDate,TaskException> taskExceptions = exceptionsByTask.getOrDefault(task.getTaskId(),Map.of());
+            events.addAll(recurrenceExpander.expandTask(task,categories,start,end,taskExceptions));
         }
 
         return events;
@@ -118,7 +135,10 @@ public class EventService {
     private EventResponseDTO mapToDTO(Task task) {
         Set<CategoryResponseDTO> categoryDTOs = getCategoriesForTask(task.getTaskId());
 
+        String occurenceId = task.getTaskId()+"_"+(task.getStartTime()!=null? task.getStartTime().toString():"0");
+
         return new EventResponseDTO(
+                occurenceId,
                 task.getTaskId(),
                 task.getTitle(),
                 task.getDescription(),
@@ -193,6 +213,98 @@ public class EventService {
         return  mapToDTO(task);
     }
 
+
+    @Transactional
+    public void deleteWithScope(Long taskId, EventScopeRequestDTO dto, Long userId) {
+        if(!userTasksRepository.existsByUser_UserIdAndTask_TaskId(userId,taskId)){
+            throw new ResourceNotFoundException("Task not found with id : "+ taskId);
+        }
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(()-> new ResourceNotFoundException("Task not found with id : "+taskId));
+
+        switch(dto.scope()){
+            case ALL->{
+                taskExceptionRepository.deleteByTask_TaskId(taskId);
+                taskCategoriesRepository.deleteByTask_TaskId(taskId);
+                userTasksRepository.deleteByTask_TaskId(taskId);
+                taskRepository.delete(task);
+            }
+            case THIS_AND_FOLLOWING ->{
+                if(dto.fromDate()==null){
+                    throw new BadRequestException("fromDate must be provided for THIS_AND_FOLLOWING");
+                }
+                task.setRecurrenceEndDate(dto.fromDate().minusDays(1));
+                taskRepository.save(task);
+            }
+            case SELECTED->{
+                if(dto.selectedDates()==null || dto.selectedDates().isEmpty()){
+                    throw new BadRequestException("selectedDates must be provided for SELECTED");
+                }
+                for (LocalDate date: dto.selectedDates()){
+                    TaskException tEx = taskExceptionRepository.findByTask_TaskIdAndOriginalDate(taskId,date)
+                            .orElseGet(()->{
+                               TaskException newEx = new TaskException();
+                               newEx.setTask(task);
+                               newEx.setOriginalDate(date);
+                               return newEx;
+                            });
+                    tEx.setCancelled(true);
+                    taskExceptionRepository.save(tEx);
+                }
+            }
+        }
+    }
+
+
+    @Transactional
+    public void updateWithScope(Long taskId, EventScopeRequestDTO dto, Long userId) {
+        if(!userTasksRepository.existsByUser_UserIdAndTask_TaskId(userId,taskId)){
+            throw new ResourceNotFoundException("Task not found with id : "+taskId);
+        }
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(()-> new ResourceNotFoundException("Task not found with id : "+taskId));
+
+        if(dto.updateData() == null){
+            throw new BadRequestException("updateData must be provided for UPDATE");
+        }
+        switch(dto.scope()){
+            case ALL->{
+                updateByID(taskId,dto.updateData(),userId);
+            }
+            case THIS_AND_FOLLOWING ->{
+                if(dto.fromDate() == null){
+                    throw new BadRequestException("fromDate must be provided for THIS_AND_FOLLOWING");
+                }
+
+                task.setRecurrenceEndDate(dto.fromDate().minusDays(1));
+                taskRepository.save(task);
+
+                create(dto.updateData(),userId);
+            }
+            case SELECTED ->{
+                if(dto.selectedDates()==null || dto.selectedDates().isEmpty()){
+                    throw new BadRequestException("selectedDates must be provided for SELECTED");
+                }
+
+                EventRequestDTO data = dto.updateData();
+                for(LocalDate date: dto.selectedDates()){
+                    TaskException tEx = taskExceptionRepository.findByTask_TaskIdAndOriginalDate(taskId,date)
+                            .orElseGet(()->{
+                               TaskException newEx = new TaskException();
+                               newEx.setTask(task);
+                               newEx.setOriginalDate(date);
+                               return newEx;
+                            });
+                    tEx.setCancelled(false);
+                    tEx.setNewTitle(data.title());
+                    tEx.setNewDescription(data.description());
+                    tEx.setNewStartTime(data.startTime());
+                    tEx.setNewEndTime(data.endTime());
+                    taskExceptionRepository.save(tEx);
+                }
+            }
+        }
+    }
 
     private void validateEventDates(LocalDateTime start, LocalDateTime end) {
         if (start.isAfter(end)) {

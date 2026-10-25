@@ -7,6 +7,7 @@ import java.util.Set;
 
 public record EventResponseDTO(
 
+        String occurenceId,
         Long taskId,
         String title,
         String description,

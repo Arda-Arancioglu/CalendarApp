@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 
 import java.security.SecureRandom;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,6 +25,7 @@ public class SquadService {
     private final TaskRepository taskRepository;
     private final UserTasksRepository   userTasksRepository;
     private final RecurrenceExpander recurrenceExpander;
+    private final TaskExceptionRepository taskExceptionRepository;
 
 
     public SquadService(SquadMembersRepository squadMembersRepository,
@@ -31,7 +33,8 @@ public class SquadService {
                         SquadRepository squadRepository,
                         TaskRepository taskRepository,
                         UserTasksRepository userTaskRepository,
-                        RecurrenceExpander recurrenceExpander
+                        RecurrenceExpander recurrenceExpander,
+                        TaskExceptionRepository taskExceptionRepository
                         ) {
         this.squadMembersRepository = squadMembersRepository;
         this.userRepository = userRepository;
@@ -39,6 +42,7 @@ public class SquadService {
         this.taskRepository = taskRepository;
         this.userTasksRepository = userTaskRepository;
         this.recurrenceExpander= recurrenceExpander;
+        this.taskExceptionRepository = taskExceptionRepository;
 
     }
 
@@ -282,12 +286,23 @@ public class SquadService {
 
         List<SquadEventResponseDTO> squadEvents = new ArrayList<>();
 
+        List<Long>  taskIds = tasks.stream().map(Task::getTaskId).toList();
+        List<TaskException> allExceptions = taskExceptionRepository.findByTask_TaskIdIn(taskIds);
+
+        Map<Long,Map<LocalDate,TaskException>> exceptionByTask = allExceptions.stream()
+                .collect(Collectors.groupingBy(
+                        te->te.getTask().getTaskId(),
+                        Collectors.toMap(TaskException::getOriginalDate,te->te)
+                ));
+
         for (Task task :tasks){
+            Map<LocalDate,TaskException> taskExceptions = exceptionByTask.getOrDefault(task.getTaskId(),Map.of());
             List<EventResponseDTO> occurences = recurrenceExpander.expandTask(
                     task,
                     Set.of(),
                     windowStart,
-                    windowEnd
+                    windowEnd,
+                    taskExceptions
             );
 
 

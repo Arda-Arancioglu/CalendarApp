@@ -69,5 +69,22 @@ public class EventController {
     }
 
 
+    @DeleteMapping("/{id}/scope")
+    public ResponseEntity<Void> deleteWithScope(@PathVariable Long id,
+                                                @Valid @RequestBody EventScopeRequestDTO request,
+                                                Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        service.deleteWithScope(id,request,userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/scope")
+    public ResponseEntity<Void> updateWithScope(@PathVariable Long id,
+                                                @Valid @RequestBody EventScopeRequestDTO request,
+                                                Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        service.updateWithScope(id,request,userId);
+        return ResponseEntity.noContent().build();
+    }
 
 }
