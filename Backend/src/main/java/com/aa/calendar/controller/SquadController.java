@@ -97,4 +97,22 @@ public class SquadController {
         return  ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{squadId}/favorite")
+    public ResponseEntity<Void> toggleFavorite(@PathVariable Long squadId,
+                                               Authentication authentication){
+        Long userId = (Long) authentication.getPrincipal();
+        squadService.toggleFavorite(userId,squadId);
+        return  ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/favorites/order")
+    public ResponseEntity<Void> reorderFavorites(@Valid  @RequestBody SquadReorderFavoritesRequestDTO dto,
+                                                 Authentication authentication){
+        Long userId = (Long) authentication.getPrincipal();
+        squadService.reorderFavorites(dto.squadIds(),userId);
+        return  ResponseEntity.noContent().build();
+    }
+
+
+
 }

@@ -1,8 +1,10 @@
 package com.aa.calendar.controller;
 
+import com.aa.calendar.dto.ThemeUpdateRequestDTO;
 import com.aa.calendar.dto.UserResponseDTO;
 import com.aa.calendar.service.UserService;
 
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -21,4 +23,13 @@ public class UserController {
         Long userId = (Long) authentication.getPrincipal();
         return ResponseEntity.ok(service.getUserById(userId));
     }
+
+    @PutMapping("/theme")
+    public ResponseEntity<UserResponseDTO> updateTheme(@RequestBody @Valid ThemeUpdateRequestDTO themeUpdateRequestDTO,
+                                                       Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(service.updateTheme(userId, themeUpdateRequestDTO));
+    }
+
+
 }

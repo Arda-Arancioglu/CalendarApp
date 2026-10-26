@@ -61,7 +61,8 @@ public class SquadService {
                squadMember.getSquad().getSquadName(),
                squadMember.getSquad().getSquadDescription(),
                squadMember.getVisibility(),
-               squadMember.getRole()
+               squadMember.getRole(),
+               squadMember.getFavoriteOrder()
        );
     }
 
@@ -223,6 +224,44 @@ public class SquadService {
 
     }
 
+
+    @Transactional
+    public void toggleFavorite(Long userId, Long squadId) {
+        SquadMember sM = squadMembersRepository.findBySquad_SquadIdAndUser_UserId(squadId,userId)
+                .orElseThrow(()-> new ResourceNotFoundException("Squad not found with id : " + squadId));
+
+        if(sM.getFavoriteOrder() != null){
+          sM.setFavoriteOrder(null);
+        }else{
+            List<SquadMember> squadList = squadMembersRepository.findAllByUser_UserId(userId);
+            int nextOrder = squadList.stream().map(SquadMember::getFavoriteOrder)
+                    .filter(Objects::nonNull)
+                    .max(Integer::compareTo)
+                    .orElse(0)+1;
+
+            sM.setFavoriteOrder(nextOrder);
+        }
+
+        squadMembersRepository.save(sM);
+    }
+
+    @Transactional
+    public void reorderFavorites(List<Long> squadIds , Long userId){
+
+        List<SquadMember> members = squadMembersRepository.findAllByUser_UserId(userId);
+
+        Map<Long,SquadMember> memberMap = members.stream()
+                .collect(Collectors.toMap(m->m.getSquad().getSquadId() , m->m));
+
+        for(int i = 0 ; i < squadIds.size() ; i++){
+            Long squadId = squadIds.get(i);
+            SquadMember member = memberMap.get(squadId);
+            if(member != null){
+                member.setFavoriteOrder(i+1);
+            }
+        }
+        squadMembersRepository.saveAll(members);
+    }
 
     @Transactional
     public void updateMemberVisibility(UpdateVisibilityRequestDTO dto, Long userId){

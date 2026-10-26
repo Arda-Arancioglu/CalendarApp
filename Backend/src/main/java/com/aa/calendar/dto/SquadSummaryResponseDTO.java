@@ -9,7 +9,8 @@ public record SquadSummaryResponseDTO(
         String squadName,
         String squadDescription,
         EventVisibility myVisibility,
-        SquadRole role
+        SquadRole role,
+        Integer favoriteOrder
 
 ) {
 }

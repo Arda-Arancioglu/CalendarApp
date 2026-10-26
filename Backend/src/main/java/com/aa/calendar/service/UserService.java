@@ -2,6 +2,7 @@ package com.aa.calendar.service;
 
 
 import com.aa.calendar.dto.RegisterRequest;
+import com.aa.calendar.dto.ThemeUpdateRequestDTO;
 import com.aa.calendar.dto.UserResponseDTO;
 
 import com.aa.calendar.entity.User;
@@ -12,6 +13,7 @@ import com.aa.calendar.repository.TaskRepository;
 import com.aa.calendar.repository.UserRepository;
 
 import com.aa.calendar.repository.UserTasksRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -39,8 +41,19 @@ public class UserService {
     public UserResponseDTO mapToDTO(User user){
         return new UserResponseDTO(
                 user.getUserId(),
-                user.getUsername()
+                user.getUsername(),
+                user.getTheme() != null ? user.getTheme() : "indigo"
+
         );
+    }
+
+    @Transactional
+    public UserResponseDTO updateTheme(Long userId, ThemeUpdateRequestDTO dto){
+        User user = userRepository.findById(userId)
+                .orElseThrow(()-> new BadRequestException("User not found"));
+        user.setTheme(dto.theme());
+        userRepository.save(user);
+        return mapToDTO(user);
     }
 
 

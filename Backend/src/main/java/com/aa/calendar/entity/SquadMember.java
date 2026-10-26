@@ -36,4 +36,6 @@ public class SquadMember {
 
     @Enumerated(EnumType.STRING)
     EventVisibility visibility =  EventVisibility.BUSY;
+
+    private Integer favoriteOrder = null;
 }

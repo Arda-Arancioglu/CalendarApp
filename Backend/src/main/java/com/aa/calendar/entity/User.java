@@ -30,7 +30,8 @@ public class User {
     @NotBlank
     private String password;
 
-    //Roles??
+    private String theme = "indigo";
+
 
 
 }
