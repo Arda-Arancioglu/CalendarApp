@@ -18,6 +18,7 @@ export interface SquadSummaryResponseDTO {
   squadDescription: string | null;
   role: SquadRole;
   myVisibility: EventVisibility;
+  favoriteOrder?: number | null;
 }
 
 /** One member inside GET /api/squad/{id}. Members do NOT expose their visibility. */
@@ -37,6 +38,7 @@ export interface SquadDetailResponseDTO {
   myRole: SquadRole;
   myVisibility: EventVisibility;
   members: SquadMemberResponseDTO[];
+  favoriteOrder?: number | null;
 }
 
 /** Response of POST /api/squad and POST /api/squad/join */
@@ -94,4 +96,10 @@ export interface ChangeRoleRequestDTO {
 export interface ChangeVisibilityRequestDTO {
   squadId: number;
   visibility: EventVisibility;
+}
+
+/** PUT /api/squad/favorites/order */
+export interface ReorderFavoritesRequestDTO {
+  squadIds: number[];
+  squadId?: number[];
 }

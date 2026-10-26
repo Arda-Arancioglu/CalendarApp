@@ -27,9 +27,13 @@ import {
   toInputDateTime,
 } from '../../utils/date';
 import {
+  WEEKDAY_OPTIONS,
   buildScopeRequestDTO,
   generateUpcomingOccurrenceDates,
   getEventOccurrenceDate,
+  getWeekdayNameFromDate,
+  parseRecurrenceDays,
+  serializeRecurrenceDays,
   type ScopeChoice,
 } from '../../utils/recurrence';
 import {
@@ -45,6 +49,7 @@ import type {
   EventResponseDTO,
   EventScopeRequestDTO,
   RecurrenceType,
+  WeekdayName,
 } from '../../types/event';
 
 export interface EventSlotRange {
@@ -60,11 +65,23 @@ const RECURRENCE_OPTIONS: { value: RecurrenceType; label: string }[] = [
   { value: 'YEARLY', label: 'Every year' },
 ];
 
+const INTERVAL_UNIT_LABELS: Record<
+  Exclude<RecurrenceType, 'NONE'>,
+  { singular: string; plural: string }
+> = {
+  DAILY: { singular: 'day', plural: 'days' },
+  WEEKLY: { singular: 'week', plural: 'weeks' },
+  MONTHLY: { singular: 'month', plural: 'months' },
+  YEARLY: { singular: 'year', plural: 'years' },
+};
+
 export interface EventFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   /** When set, edits this event via PUT /api/events/{id} (or PUT /api/events/{id}/scope if recurring). */
   event?: EventResponseDTO | null;
+  /** When set, pre-populates a new event from an existing event (1-click Duplicate). */
+  duplicateFromEvent?: EventResponseDTO | null;
   /** Initial start/end when the user clicked or dragged a calendar slot. */
   initialSlot?: EventSlotRange | null;
   categories: CategoryResponseDTO[];
@@ -75,25 +92,34 @@ export interface EventFormModalProps {
 }
 
 function buildDefaultValues(
-  event?: EventResponseDTO | null,
+  sourceEvent?: EventResponseDTO | null,
   initialSlot?: EventSlotRange | null,
 ): EventFormValues {
-  if (event) {
-    const recurrenceType: RecurrenceType = event.recurrenceType ?? 'NONE';
+  if (sourceEvent) {
+    const startDate = fromApiDateTime(sourceEvent.startTime);
+    const recurrenceType: RecurrenceType = sourceEvent.recurrenceType ?? 'NONE';
     const hasEndDate = Boolean(
-      event.recurrenceEndDate && event.recurrenceEndDate.trim() !== '',
+      sourceEvent.recurrenceEndDate && sourceEvent.recurrenceEndDate.trim() !== '',
     );
+    const parsedDays = parseRecurrenceDays(sourceEvent.recurrenceDays);
+    const defaultWeekday = getWeekdayNameFromDate(startDate);
+
     return {
-      title: event.title,
-      description: event.description ?? '',
-      startTime: toInputDateTime(fromApiDateTime(event.startTime)),
-      endTime: toInputDateTime(fromApiDateTime(event.endTime)),
-      isFlexible: event.isFlexible,
-      isPrivate: event.isPrivate,
-      categoryIds: event.categories.map((c) => c.categoryId),
+      title: sourceEvent.title,
+      description: sourceEvent.description ?? '',
+      startTime: toInputDateTime(startDate),
+      endTime: toInputDateTime(fromApiDateTime(sourceEvent.endTime)),
+      isFlexible: sourceEvent.isFlexible,
+      isPrivate: sourceEvent.isPrivate,
+      categoryIds: sourceEvent.categories.map((c) => c.categoryId),
       recurrenceType,
+      recurrenceInterval:
+        sourceEvent.recurrenceInterval && sourceEvent.recurrenceInterval >= 1
+          ? sourceEvent.recurrenceInterval
+          : 1,
+      recurrenceDays: parsedDays.length > 0 ? parsedDays : [defaultWeekday],
       repeatForever: !hasEndDate,
-      recurrenceEndDate: event.recurrenceEndDate ?? '',
+      recurrenceEndDate: sourceEvent.recurrenceEndDate ?? '',
     };
   }
 
@@ -109,6 +135,8 @@ function buildDefaultValues(
     isPrivate: false,
     categoryIds: [],
     recurrenceType: 'NONE',
+    recurrenceInterval: 1,
+    recurrenceDays: [getWeekdayNameFromDate(defaultStart)],
     repeatForever: true,
     recurrenceEndDate: '',
   };
@@ -117,16 +145,19 @@ function buildDefaultValues(
 function EventFormBody({
   onClose,
   event,
+  duplicateFromEvent,
   initialSlot,
   categories,
   onSubmitPayload,
   onSubmitScopePayload,
 }: Omit<EventFormModalProps, 'isOpen'>) {
   const isEditing = Boolean(event);
+  const templateEvent = event ?? duplicateFromEvent ?? null;
   const isRecurringEvent = Boolean(
     event?.recurrenceType && event.recurrenceType !== 'NONE',
   );
   const repeatSelectId = useId();
+  const intervalInputId = useId();
   const toast = useToast();
   const createMutation = useCreateEvent();
   const updateMutation = useUpdateEvent();
@@ -145,8 +176,16 @@ function EventFormBody({
   const [selectedCustomDates, setSelectedCustomDates] = useState<ApiDate[]>(() =>
     currentOccurrenceDate ? [currentOccurrenceDate] : [],
   );
+  const [daysTouched, setDaysTouched] = useState<boolean>(() =>
+    Boolean(templateEvent?.recurrenceDays),
+  );
+  const [intervalTouched, setIntervalTouched] = useState<boolean>(() =>
+    Boolean(templateEvent?.recurrenceInterval && templateEvent.recurrenceInterval > 1),
+  );
   const [formError, setFormError] = useState<string | null>(null);
-  const [initialDefaults] = useState(() => buildDefaultValues(event, initialSlot));
+  const [initialDefaults] = useState(() =>
+    buildDefaultValues(templateEvent, initialSlot),
+  );
 
   const {
     register,
@@ -166,7 +205,26 @@ function EventFormBody({
   const watchedPrivate = useWatch({ control, name: 'isPrivate' });
   const watchedCategoryIds = useWatch({ control, name: 'categoryIds' });
   const watchedRecurrenceType = useWatch({ control, name: 'recurrenceType' });
+  const watchedRecurrenceInterval = useWatch({ control, name: 'recurrenceInterval' });
+  const watchedRecurrenceDays = useWatch({ control, name: 'recurrenceDays' });
   const watchedRepeatForever = useWatch({ control, name: 'repeatForever' });
+  const watchedStartTime = useWatch({ control, name: 'startTime' });
+
+  const toggleWeekdayPill = (day: WeekdayName) => {
+    setDaysTouched(true);
+    const exists = watchedRecurrenceDays.includes(day);
+    let next: WeekdayName[];
+    if (exists) {
+      // Keep at least one weekday selected
+      next =
+        watchedRecurrenceDays.length > 1
+          ? watchedRecurrenceDays.filter((d) => d !== day)
+          : watchedRecurrenceDays;
+    } else {
+      next = [...watchedRecurrenceDays, day];
+    }
+    setValue('recurrenceDays', next, { shouldValidate: true, shouldDirty: true });
+  };
 
   const onSubmit = async (values: EventFormValues) => {
     setFormError(null);
@@ -176,7 +234,7 @@ function EventFormBody({
       return;
     }
 
-    // Format startTime and endTime as LocalDateTime ("yyyy-MM-dd'T'HH:mm:ss"), never toISOString().
+    const startDate = fromInputDateTime(values.startTime);
     const trimmedDesc = values.description.trim();
     const includeRecurrence =
       values.recurrenceType !== 'NONE' || isRecurringEvent;
@@ -186,10 +244,32 @@ function EventFormBody({
         ? null
         : values.recurrenceEndDate.trim() || null;
 
+    const normalizedInterval =
+      Number.isInteger(values.recurrenceInterval) && values.recurrenceInterval >= 1
+        ? values.recurrenceInterval
+        : 1;
+
+    const includeInterval =
+      values.recurrenceType !== 'NONE' &&
+      (normalizedInterval > 1 ||
+        intervalTouched ||
+        templateEvent?.recurrenceInterval !== undefined);
+
+    const startWeekday = getWeekdayNameFromDate(startDate);
+    const activeDays =
+      values.recurrenceDays.length > 0 ? values.recurrenceDays : [startWeekday];
+    const serializedDays = serializeRecurrenceDays(activeDays);
+    const includeDays =
+      values.recurrenceType === 'WEEKLY' &&
+      (daysTouched ||
+        activeDays.length > 1 ||
+        activeDays[0] !== startWeekday ||
+        Boolean(templateEvent?.recurrenceDays));
+
     const payload: EventRequestDTO = {
       title: values.title.trim(),
       ...(trimmedDesc !== '' ? { description: trimmedDesc } : {}),
-      startTime: toApiDateTime(fromInputDateTime(values.startTime)),
+      startTime: toApiDateTime(startDate),
       endTime: toApiDateTime(fromInputDateTime(values.endTime)),
       isFlexible: values.isFlexible,
       categoryIds: values.categoryIds,
@@ -200,6 +280,8 @@ function EventFormBody({
             recurrenceEndDate: resolvedEndDate,
           }
         : {}),
+      ...(includeInterval ? { recurrenceInterval: normalizedInterval } : {}),
+      ...(includeDays ? { recurrenceDays: serializedDays } : {}),
     };
 
     try {
@@ -232,7 +314,7 @@ function EventFormBody({
         toast.success('Event updated');
       } else {
         await createMutation.mutateAsync(payload);
-        toast.success('Event created');
+        toast.success(duplicateFromEvent ? 'Event duplicated' : 'Event created');
       }
       onClose();
     } catch (error) {
@@ -276,6 +358,13 @@ function EventFormBody({
     },
   ];
 
+  const intervalUnit =
+    watchedRecurrenceType !== 'NONE'
+      ? watchedRecurrenceInterval === 1
+        ? INTERVAL_UNIT_LABELS[watchedRecurrenceType].singular
+        : INTERVAL_UNIT_LABELS[watchedRecurrenceType].plural
+      : 'days';
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
       {formError && <Alert variant="error">{formError}</Alert>}
@@ -294,7 +383,14 @@ function EventFormBody({
           label="Start time"
           type="datetime-local"
           error={errors.startTime?.message}
-          {...register('startTime')}
+          {...register('startTime', {
+            onChange: (e) => {
+              if (!daysTouched) {
+                const parsed = fromInputDateTime(String(e.target.value));
+                setValue('recurrenceDays', [getWeekdayNameFromDate(parsed)]);
+              }
+            },
+          })}
         />
         <Input
           label="End time"
@@ -318,7 +414,14 @@ function EventFormBody({
             id={repeatSelectId}
             disabled={isSubmitting}
             className="h-10 w-full rounded-lg border border-dark-border bg-dark-bg/70 px-3 text-sm text-zinc-100 outline-none transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30 disabled:cursor-not-allowed disabled:opacity-60"
-            {...register('recurrenceType')}
+            {...register('recurrenceType', {
+              onChange: (e) => {
+                if (e.target.value === 'WEEKLY' && watchedRecurrenceDays.length === 0) {
+                  const parsed = fromInputDateTime(watchedStartTime);
+                  setValue('recurrenceDays', [getWeekdayNameFromDate(parsed)]);
+                }
+              },
+            })}
           >
             {RECURRENCE_OPTIONS.map((opt) => (
               <option
@@ -334,6 +437,68 @@ function EventFormBody({
 
         {watchedRecurrenceType !== 'NONE' && (
           <div className="space-y-3 pt-1">
+            {/* Custom Interval: Every [ X ] [days/weeks/months/years] */}
+            <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-dark-border/80 bg-dark-surface/60 px-3 py-2">
+              <label
+                htmlFor={intervalInputId}
+                className="text-xs font-medium text-zinc-300"
+              >
+                Repeat every
+              </label>
+              <input
+                id={intervalInputId}
+                type="number"
+                min={1}
+                max={99}
+                disabled={isSubmitting}
+                aria-label="Recurrence interval"
+                className="h-8 w-16 rounded-md border border-dark-border bg-dark-bg px-2.5 text-center text-xs font-semibold text-zinc-100 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500/40"
+                {...register('recurrenceInterval', {
+                  valueAsNumber: true,
+                  onChange: () => setIntervalTouched(true),
+                })}
+              />
+              <span className="text-xs font-medium text-zinc-300">{intervalUnit}</span>
+            </div>
+
+            {/* Multi-Day Weekly Weekday Selection Pills */}
+            {watchedRecurrenceType === 'WEEKLY' && (
+              <div className="space-y-1.5">
+                <span className="block text-xs font-medium text-zinc-300">
+                  Repeat on days
+                </span>
+                <div
+                  role="group"
+                  aria-label="Repeat on days of the week"
+                  className="flex flex-wrap items-center gap-1.5"
+                >
+                  {WEEKDAY_OPTIONS.map((dayOpt) => {
+                    const isSelected = watchedRecurrenceDays.includes(dayOpt.value);
+                    return (
+                      <button
+                        key={dayOpt.value}
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={() => toggleWeekdayPill(dayOpt.value)}
+                        aria-label={dayOpt.fullLabel}
+                        aria-pressed={isSelected}
+                        title={dayOpt.fullLabel}
+                        className={cn(
+                          'flex h-8 w-9 items-center justify-center rounded-lg border text-xs font-semibold transition-all',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400',
+                          isSelected
+                            ? 'border-indigo-400 bg-indigo-500 text-white shadow-xs'
+                            : 'border-dark-border bg-dark-surface text-zinc-400 hover:border-zinc-600 hover:text-zinc-200',
+                        )}
+                      >
+                        {dayOpt.shortLabel}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <Toggle
               checked={watchedRepeatForever}
               onChange={(checked) => {
@@ -496,26 +661,36 @@ export function EventFormModal({
   isOpen,
   onClose,
   event,
+  duplicateFromEvent,
   initialSlot,
   categories,
   onSubmitPayload,
   onSubmitScopePayload,
 }: EventFormModalProps) {
   const isEditing = Boolean(event);
+  const isDuplicating = !isEditing && Boolean(duplicateFromEvent);
   const isRecurringEvent = Boolean(
     event?.recurrenceType && event.recurrenceType !== 'NONE',
   );
   const formKey = event
     ? `edit-${event.occurrenceId || event.eventId}`
-    : initialSlot
-      ? `slot-${initialSlot.start.getTime()}-${initialSlot.end.getTime()}`
-      : 'new';
+    : duplicateFromEvent
+      ? `dup-${duplicateFromEvent.occurrenceId || duplicateFromEvent.eventId}`
+      : initialSlot
+        ? `slot-${initialSlot.start.getTime()}-${initialSlot.end.getTime()}`
+        : 'new';
+
+  const modalTitle = isEditing
+    ? 'Edit event'
+    : isDuplicating
+      ? 'Duplicate event'
+      : 'New event';
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditing ? 'Edit event' : 'New event'}
+      title={modalTitle}
       maxWidth={isEditing && isRecurringEvent ? 'xl' : 'lg'}
     >
       {isOpen && (
@@ -523,6 +698,7 @@ export function EventFormModal({
           key={formKey}
           onClose={onClose}
           event={event}
+          duplicateFromEvent={duplicateFromEvent}
           initialSlot={initialSlot}
           categories={categories}
           onSubmitPayload={onSubmitPayload}

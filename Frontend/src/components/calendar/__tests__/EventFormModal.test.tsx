@@ -350,4 +350,106 @@ describe('EventFormModal component', () => {
       updateData: null,
     });
   });
+
+  it('supports multi-day weekly recurrence pills and custom recurrence interval', async () => {
+    const user = userEvent.setup();
+    const { onSubmitPayload, onClose } = renderEventModal();
+
+    await user.type(screen.getByLabelText(/title/i), 'MWF Workout');
+    await user.selectOptions(screen.getByLabelText(/repeat/i), 'WEEKLY');
+
+    // Change interval to every 2 weeks
+    const intervalInput = screen.getByLabelText(/recurrence interval/i);
+    await user.clear(intervalInput);
+    await user.type(intervalInput, '2');
+
+    // 2026-10-20 is Tuesday (selected by default). Select Monday, Wednesday, Friday, then deselect Tuesday
+    await user.click(screen.getByRole('button', { name: /monday/i }));
+    await user.click(screen.getByRole('button', { name: /wednesday/i }));
+    await user.click(screen.getByRole('button', { name: /friday/i }));
+    await user.click(screen.getByRole('button', { name: /tuesday/i }));
+
+    await user.click(screen.getByRole('button', { name: /create event/i }));
+
+    await waitFor(() => {
+      expect(onSubmitPayload).toHaveBeenCalledTimes(1);
+    });
+
+    expect(onSubmitPayload).toHaveBeenCalledWith({
+      title: 'MWF Workout',
+      startTime: '2026-10-20T10:00:00',
+      endTime: '2026-10-20T11:00:00',
+      isFlexible: false,
+      isPrivate: false,
+      categoryIds: [],
+      recurrenceType: 'WEEKLY',
+      recurrenceInterval: 2,
+      recurrenceDays: 'MONDAY,WEDNESDAY,FRIDAY',
+      recurrenceEndDate: null,
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('pre-populates form fields when duplicating an existing event via duplicateFromEvent', async () => {
+    const user = userEvent.setup();
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const onClose = vi.fn();
+    const onSubmitPayload = vi.fn<(payload: EventRequestDTO) => void>();
+
+    const sourceEvent: EventResponseDTO = {
+      eventId: 42,
+      taskId: 42,
+      title: 'Design Critique',
+      description: 'Review Figma prototypes',
+      startTime: '2026-10-26T14:00:00',
+      endTime: '2026-10-26T15:30:00',
+      isFlexible: true,
+      isPrivate: false,
+      categories: [{ categoryId: 10, name: 'Work', color: '#4F46E5' }],
+      recurrenceType: 'WEEKLY',
+      recurrenceInterval: 2,
+      recurrenceDays: 'MONDAY,THURSDAY',
+      recurrenceEndDate: '2026-12-31',
+    };
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <EventFormModal
+            isOpen={true}
+            onClose={onClose}
+            duplicateFromEvent={sourceEvent}
+            categories={SAMPLE_CATEGORIES}
+            onSubmitPayload={onSubmitPayload}
+          />
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByRole('heading', { name: /duplicate event/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/title/i)).toHaveValue('Design Critique');
+
+    await user.click(screen.getByRole('button', { name: /create event/i }));
+
+    await waitFor(() => {
+      expect(onSubmitPayload).toHaveBeenCalledTimes(1);
+    });
+
+    expect(onSubmitPayload).toHaveBeenCalledWith({
+      title: 'Design Critique',
+      description: 'Review Figma prototypes',
+      startTime: '2026-10-26T14:00:00',
+      endTime: '2026-10-26T15:30:00',
+      isFlexible: true,
+      isPrivate: false,
+      categoryIds: [10],
+      recurrenceType: 'WEEKLY',
+      recurrenceInterval: 2,
+      recurrenceDays: 'MONDAY,THURSDAY',
+      recurrenceEndDate: '2026-12-31',
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

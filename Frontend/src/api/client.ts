@@ -34,7 +34,7 @@ export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): voi
 
 // ---- request() ----
 
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 export type QueryParams = Record<string, string | number | boolean | undefined>;
 
 export interface RequestOptions {

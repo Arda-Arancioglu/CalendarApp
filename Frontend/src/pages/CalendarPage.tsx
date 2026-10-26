@@ -189,9 +189,10 @@ export function CalendarPage() {
   const [visibleRange, setVisibleRange] = useState<DateRangeParams | null>(null);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
 
-  // Modal state: creating/editing vs viewing details vs confirming recurring drag/resize
+  // Modal state: creating/editing/duplicating vs viewing details vs confirming recurring drag/resize
   const [formOpen, setFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventResponseDTO | null>(null);
+  const [duplicatingEvent, setDuplicatingEvent] = useState<EventResponseDTO | null>(null);
   const [initialSlot, setInitialSlot] = useState<EventSlotRange | null>(null);
   const [viewingEvent, setViewingEvent] = useState<EventResponseDTO | null>(null);
   const [pendingReschedule, setPendingReschedule] = useState<PendingRescheduleState | null>(null);
@@ -262,6 +263,7 @@ export function CalendarPage() {
 
   const openNewEventModal = (slot?: EventSlotRange) => {
     setEditingEvent(null);
+    setDuplicatingEvent(null);
     setInitialSlot(slot ?? null);
     setFormOpen(true);
   };
@@ -320,6 +322,8 @@ export function CalendarPage() {
         ? {
             recurrenceType: dto.recurrenceType,
             recurrenceEndDate: dto.recurrenceEndDate ?? null,
+            ...(dto.recurrenceInterval ? { recurrenceInterval: dto.recurrenceInterval } : {}),
+            ...(dto.recurrenceDays ? { recurrenceDays: dto.recurrenceDays } : {}),
           }
         : {}),
     };
@@ -471,17 +475,29 @@ export function CalendarPage() {
         onClose={() => setViewingEvent(null)}
         onEdit={(ev) => {
           setViewingEvent(null);
+          setDuplicatingEvent(null);
           setEditingEvent(ev);
+          setInitialSlot(null);
+          setFormOpen(true);
+        }}
+        onDuplicate={(ev) => {
+          setViewingEvent(null);
+          setEditingEvent(null);
+          setDuplicatingEvent(ev);
           setInitialSlot(null);
           setFormOpen(true);
         }}
       />
 
-      {/* Create / Edit event modal */}
+      {/* Create / Edit / Duplicate event modal */}
       <EventFormModal
         isOpen={formOpen}
-        onClose={() => setFormOpen(false)}
+        onClose={() => {
+          setFormOpen(false);
+          setDuplicatingEvent(null);
+        }}
         event={editingEvent}
+        duplicateFromEvent={duplicatingEvent}
         initialSlot={initialSlot}
         categories={categories}
       />

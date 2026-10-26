@@ -7,6 +7,7 @@ import { setUnauthorizedHandler } from '../api/client';
 import { clearAuth, getStoredToken, getStoredUser, saveAuth, saveUser } from '../utils/authStorage';
 import { getTokenExpiry, isTokenExpired } from '../utils/jwt';
 import { ApiError } from '../utils/errors';
+import { applyTheme, getStoredTheme } from '../utils/theme';
 import type { AuthResponseDTO, LoginRequestDTO, RegisterRequestDTO } from '../types/auth';
 import type { UserResponseDTO } from '../types/user';
 
@@ -27,6 +28,12 @@ const LOGGED_OUT: SessionState = { status: 'anonymous', token: null, user: null 
 function readInitialSession(): { session: SessionState; notice: string | null } {
   const token = getStoredToken();
   const user = getStoredUser();
+
+  if (user?.theme) {
+    applyTheme(user.theme);
+  } else {
+    applyTheme(getStoredTheme());
+  }
 
   if (!token || !user) {
     clearAuth(); // remove half-saved leftovers
@@ -64,13 +71,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setUnauthorizedHandler(null);
   }, [endSession]);
 
-  // 2) On start, validate the stored token with GET /user/me.
+  // 2) On start, validate the stored token with GET /user/me and sync cross-device theme.
   useEffect(() => {
     if (session.status !== 'checking') return;
     const controller = new AbortController();
 
     getMe(controller.signal)
       .then((me) => {
+        if (me.theme) {
+          applyTheme(me.theme);
+        }
         saveUser(me);
         setSession((current) =>
           current.token ? { status: 'authenticated', token: current.token, user: me } : current,
@@ -124,6 +134,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     saveAuth(response.token, user);
     setSession({ status: 'authenticated', token: response.token, user });
     setNotice(null);
+
+    // Fetch /user/me after login/register to pull the user's saved cross-device theme
+    void getMe()
+      .then((me) => {
+        if (me.theme) {
+          applyTheme(me.theme);
+        }
+        saveUser(me);
+        setSession((current) =>
+          current.token ? { ...current, user: me } : current,
+        );
+      })
+      .catch(() => {
+        // Non-critical; local theme remains active
+      });
   }, []);
 
   const login = useCallback(

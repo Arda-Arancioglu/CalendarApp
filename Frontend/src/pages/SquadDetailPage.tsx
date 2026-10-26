@@ -5,6 +5,7 @@ import {
   CalendarDays,
   KeyRound,
   LogOut,
+  Star,
   Trash2,
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -21,10 +22,13 @@ import {
   useChangeVisibility,
   useDeleteSquad,
   useLeaveSquad,
+  useMySquads,
   useSquadDetail,
+  useToggleFavoriteSquad,
 } from '../hooks/useSquads';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
+import { cn } from '../utils/cn';
 import {
   canDeleteSquad,
   canLeaveSquad,
@@ -50,10 +54,12 @@ export function SquadDetailPage() {
     refetch,
     isFetching,
   } = useSquadDetail(squadId);
+  const { data: mySquads = [] } = useMySquads();
 
   const visibilityMutation = useChangeVisibility(squadId ?? 0);
   const leaveMutation = useLeaveSquad();
   const deleteMutation = useDeleteSquad();
+  const toggleFavoriteMutation = useToggleFavoriteSquad();
 
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -99,6 +105,24 @@ export function SquadDetailPage() {
       </div>
     );
   }
+
+  const summaryMatch = mySquads.find((s) => s.squadId === squad.squadId);
+  const isFavorite =
+    (squad.favoriteOrder !== null && squad.favoriteOrder !== undefined) ||
+    (summaryMatch?.favoriteOrder !== null && summaryMatch?.favoriteOrder !== undefined);
+
+  const handleToggleFavorite = async () => {
+    try {
+      await toggleFavoriteMutation.mutateAsync(squad.squadId);
+      toast.success(
+        isFavorite
+          ? `Removed "${squad.squadName}" from favorites`
+          : `Pinned "${squad.squadName}" to favorites`,
+      );
+    } catch {
+      // MutationCache handles error toast.
+    }
+  };
 
   const handleVisibilityChange = async (next: EventVisibility) => {
     try {
@@ -150,6 +174,26 @@ export function SquadDetailPage() {
           description={squad.squadDescription || 'No squad description.'}
           actions={
             <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                disabled={toggleFavoriteMutation.isPending}
+                onClick={() => void handleToggleFavorite()}
+                aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                aria-pressed={isFavorite}
+                title={isFavorite ? 'Remove from favorites' : 'Pin to sidebar favorites'}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors',
+                  isFavorite
+                    ? 'border-amber-400/40 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25'
+                    : 'border-dark-border bg-dark-elevated text-zinc-300 hover:border-zinc-600 hover:text-zinc-100',
+                )}
+              >
+                <Star
+                  className={cn('h-3.5 w-3.5', isFavorite && 'fill-amber-400 text-amber-400')}
+                  aria-hidden="true"
+                />
+                <span>{isFavorite ? 'Starred' : 'Star'}</span>
+              </button>
               <RoleBadge role={squad.myRole} />
               <VisibilityBadge visibility={squad.myVisibility} />
               <Link to={`/squads/${squad.squadId}/calendar`}>

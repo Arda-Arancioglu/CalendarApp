@@ -135,3 +135,29 @@ export function useChangeVisibility(squadId: number) {
     },
   });
 }
+
+/**
+ * Toggle favorite status of a squad (`PATCH /api/squad/{squadId}/favorite`).
+ */
+export function useToggleFavoriteSquad() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (squadId: number) => squadsApi.toggleFavoriteSquad(squadId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.squads.all });
+    },
+  });
+}
+
+/**
+ * Reorder favorite squads (`PUT /api/squad/favorites/order`).
+ */
+export function useReorderFavoriteSquads() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (squadIds: number[]) => squadsApi.reorderFavoriteSquads(squadIds),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.squads.all });
+    },
+  });
+}

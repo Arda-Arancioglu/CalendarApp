@@ -5,6 +5,7 @@ import type {
   ChangeVisibilityRequestDTO,
   JoinSquadRequestDTO,
   KickMemberRequestDTO,
+  ReorderFavoritesRequestDTO,
   SquadCalendarMemberDTO,
   SquadCreateRequestDTO,
   SquadDetailResponseDTO,
@@ -62,6 +63,20 @@ export function changeRole(body: ChangeRoleRequestDTO): Promise<void> {
 /** Change MY visibility in a squad. 204 No Content. */
 export function changeVisibility(body: ChangeVisibilityRequestDTO): Promise<void> {
   return request<void>('/squad/visibility', { method: 'PUT', body });
+}
+
+/** Toggle favorite status of a squad (`PATCH /api/squad/{squadId}/favorite`). 204 No Content. */
+export function toggleFavoriteSquad(squadId: number): Promise<void> {
+  return request<void>(`/squad/${squadId}/favorite`, { method: 'PATCH' });
+}
+
+/** Reorder favorite squads (`PUT /api/squad/favorites/order`). 204 No Content. */
+export function reorderFavoriteSquads(squadIds: number[]): Promise<void> {
+  const body: ReorderFavoritesRequestDTO = {
+    squadIds,
+    squadId: squadIds,
+  };
+  return request<void>('/squad/favorites/order', { method: 'PUT', body });
 }
 
 /**

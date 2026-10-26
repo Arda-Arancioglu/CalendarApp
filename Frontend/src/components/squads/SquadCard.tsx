@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, CalendarDays, Users } from 'lucide-react';
+import { ArrowRight, CalendarDays, Star, Users } from 'lucide-react';
 import { RoleBadge, VisibilityBadge } from './SquadBadges';
+import { useToggleFavoriteSquad } from '../../hooks/useSquads';
+import { useToast } from '../../hooks/useToast';
+import { cn } from '../../utils/cn';
 import type { SquadSummaryResponseDTO } from '../../types/squad';
 
 interface SquadCardProps {
@@ -11,6 +14,23 @@ interface SquadCardProps {
  * Card rendered on /squads for each squad the user belongs to.
  */
 export function SquadCard({ squad }: SquadCardProps) {
+  const toggleFavoriteMutation = useToggleFavoriteSquad();
+  const toast = useToast();
+  const isFavorite = squad.favoriteOrder !== null && squad.favoriteOrder !== undefined;
+
+  const handleToggleFavorite = async () => {
+    try {
+      await toggleFavoriteMutation.mutateAsync(squad.squadId);
+      toast.success(
+        isFavorite
+          ? `Removed "${squad.squadName}" from favorites`
+          : `Pinned "${squad.squadName}" to favorites`,
+      );
+    } catch {
+      // MutationCache handles error toast
+    }
+  };
+
   return (
     <article className="group flex flex-col justify-between rounded-2xl border border-dark-border bg-dark-surface/75 p-5 transition-all hover:border-indigo-500/40 hover:bg-dark-surface">
       <div>
@@ -23,7 +43,29 @@ export function SquadCard({ squad }: SquadCardProps) {
               {squad.squadName}
             </h2>
           </div>
-          <RoleBadge role={squad.role} />
+
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              disabled={toggleFavoriteMutation.isPending}
+              onClick={() => void handleToggleFavorite()}
+              aria-label={isFavorite ? `Unstar ${squad.squadName}` : `Star ${squad.squadName}`}
+              aria-pressed={isFavorite}
+              title={isFavorite ? 'Remove from favorites' : 'Pin to sidebar favorites'}
+              className={cn(
+                'rounded-lg p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400',
+                isFavorite
+                  ? 'text-amber-400 hover:bg-amber-500/15'
+                  : 'text-zinc-500 hover:bg-dark-hover hover:text-zinc-200',
+              )}
+            >
+              <Star
+                className={cn('h-4 w-4', isFavorite && 'fill-amber-400')}
+                aria-hidden="true"
+              />
+            </button>
+            <RoleBadge role={squad.role} />
+          </div>
         </div>
 
         <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-sm text-zinc-400">

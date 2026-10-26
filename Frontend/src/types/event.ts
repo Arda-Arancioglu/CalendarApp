@@ -5,6 +5,15 @@ export type RecurrenceType = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
 
 export type RecurrenceScope = 'ALL' | 'SELECTED' | 'THIS_AND_FOLLOWING';
 
+export type WeekdayName =
+  | 'MONDAY'
+  | 'TUESDAY'
+  | 'WEDNESDAY'
+  | 'THURSDAY'
+  | 'FRIDAY'
+  | 'SATURDAY'
+  | 'SUNDAY';
+
 /**
  * Response of the /api/events endpoints.
  * Note: The backend Java record `EventResponseDTO` currently names the ID field
@@ -24,6 +33,8 @@ export interface EventResponseDTO {
   isPrivate: boolean;
   recurrenceType?: RecurrenceType;
   recurrenceEndDate?: ApiDate | null;
+  recurrenceInterval?: number | null;
+  recurrenceDays?: string | null;
 }
 
 /** Body of POST /api/events and PUT /api/events/{id} (PUT always sends the full body). */
@@ -37,6 +48,8 @@ export interface EventRequestDTO {
   isPrivate: boolean;
   recurrenceType?: RecurrenceType;
   recurrenceEndDate?: ApiDate | null;
+  recurrenceInterval?: number;
+  recurrenceDays?: string | null;
 }
 
 /** Body of DELETE /api/events/{id}/scope and PUT /api/events/{id}/scope. */

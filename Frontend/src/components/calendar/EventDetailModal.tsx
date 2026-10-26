@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   CalendarClock,
+  Copy,
   FileText,
   Lock,
   Pencil,
@@ -19,42 +20,64 @@ import { useToast } from '../../hooks/useToast';
 import { formatDate, formatDateTime } from '../../utils/date';
 import { getErrorMessage } from '../../utils/errors';
 import { DEFAULT_EVENT_COLOR, normalizeHexColor, withAlpha } from '../../utils/colors';
+import { parseRecurrenceDays } from '../../utils/recurrence';
 import type {
   EventResponseDTO,
   EventScopeRequestDTO,
-  RecurrenceType,
 } from '../../types/event';
 
 interface EventDetailModalProps {
   event: EventResponseDTO | null;
   onClose: () => void;
   onEdit: (event: EventResponseDTO) => void;
+  onDuplicate?: (event: EventResponseDTO) => void;
 }
 
-function formatRecurrenceBadge(
-  recurrenceType?: RecurrenceType,
-  recurrenceEndDate?: string | null,
-): string | null {
+function formatRecurrenceBadge(event: EventResponseDTO): string | null {
+  const { recurrenceType, recurrenceEndDate, recurrenceInterval, recurrenceDays } = event;
   if (!recurrenceType || recurrenceType === 'NONE') return null;
-  const labelMap: Record<Exclude<RecurrenceType, 'NONE'>, string> = {
-    DAILY: 'Repeats daily',
-    WEEKLY: 'Repeats weekly',
-    MONTHLY: 'Repeats monthly',
-    YEARLY: 'Repeats yearly',
-  };
-  const base = labelMap[recurrenceType];
+
+  const interval =
+    recurrenceInterval && recurrenceInterval > 1 ? recurrenceInterval : 1;
+
+  const unitLabels = {
+    DAILY: interval === 1 ? 'Repeats daily' : `Every ${interval} days`,
+    WEEKLY: interval === 1 ? 'Repeats weekly' : `Every ${interval} weeks`,
+    MONTHLY: interval === 1 ? 'Repeats monthly' : `Every ${interval} months`,
+    YEARLY: interval === 1 ? 'Repeats yearly' : `Every ${interval} years`,
+  } as const;
+
+  let base: string = unitLabels[recurrenceType];
+
+  if (recurrenceType === 'WEEKLY' && recurrenceDays) {
+    const parsedDays = parseRecurrenceDays(recurrenceDays);
+    if (parsedDays.length > 0) {
+      const shortNames = parsedDays.map(
+        (d) => d.charAt(0) + d.slice(1, 3).toLowerCase(),
+      );
+      base = `${base} on ${shortNames.join(', ')}`;
+    }
+  }
+
   if (recurrenceEndDate && recurrenceEndDate.trim() !== '') {
     const formattedEnd = formatDate(recurrenceEndDate);
-    return formattedEnd ? `${base} (until ${formattedEnd})` : `${base} (until ${recurrenceEndDate})`;
+    return formattedEnd
+      ? `${base} (until ${formattedEnd})`
+      : `${base} (until ${recurrenceEndDate})`;
   }
   return base;
 }
 
 /**
  * View modal when the user clicks an event on their personal calendar.
- * Shows full event metadata and actions to Edit or Delete.
+ * Shows full event metadata and actions to Duplicate, Edit, or Delete.
  */
-export function EventDetailModal({ event, onClose, onEdit }: EventDetailModalProps) {
+export function EventDetailModal({
+  event,
+  onClose,
+  onEdit,
+  onDuplicate,
+}: EventDetailModalProps) {
   const toast = useToast();
   const deleteMutation = useDeleteEvent();
   const deleteScopeMutation = useDeleteEventWithScope({ handlesErrorInline: true });
@@ -65,10 +88,7 @@ export function EventDetailModal({ event, onClose, onEdit }: EventDetailModalPro
   if (!event) return null;
 
   const isRecurring = Boolean(event.recurrenceType && event.recurrenceType !== 'NONE');
-  const recurrenceLabel = formatRecurrenceBadge(
-    event.recurrenceType,
-    event.recurrenceEndDate,
-  );
+  const recurrenceLabel = formatRecurrenceBadge(event);
 
   const primaryColor = normalizeHexColor(
     event.categories[0]?.color ?? DEFAULT_EVENT_COLOR,
@@ -198,7 +218,7 @@ export function EventDetailModal({ event, onClose, onEdit }: EventDetailModalPro
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-between border-t border-dark-border pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-dark-border pt-4">
             <Button
               variant="danger"
               size="sm"
@@ -215,10 +235,20 @@ export function EventDetailModal({ event, onClose, onEdit }: EventDetailModalPro
               Delete
             </Button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button variant="secondary" size="sm" onClick={onClose}>
                 Close
               </Button>
+              {onDuplicate && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => onDuplicate(event)}
+                  leftIcon={<Copy className="h-4 w-4" aria-hidden="true" />}
+                >
+                  Duplicate
+                </Button>
+              )}
               <Button
                 variant="primary"
                 size="sm"

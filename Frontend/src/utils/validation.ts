@@ -116,6 +116,16 @@ export const recurrenceTypeSchema = z.enum([
   'YEARLY',
 ]);
 
+export const weekdayNameSchema = z.enum([
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
+  'SUNDAY',
+]);
+
 export const eventSchema = z
   .object({
     title: z
@@ -141,6 +151,8 @@ export const eventSchema = z
     isPrivate: z.boolean(),
     categoryIds: z.array(z.number()),
     recurrenceType: recurrenceTypeSchema,
+    recurrenceInterval: z.number().int().min(1, 'Interval must be at least 1'),
+    recurrenceDays: z.array(weekdayNameSchema),
     repeatForever: z.boolean(),
     recurrenceEndDate: z.string(),
   })
