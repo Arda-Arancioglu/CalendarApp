@@ -66,6 +66,8 @@ public class EventServiceTest {
                Set.of(),
                true,
                RecurrenceType.NONE,
+               null,
+               1,
                null
 
        );
@@ -80,8 +82,9 @@ public class EventServiceTest {
                 Set.of(1L,2L,3L),
                 true,
                 RecurrenceType.NONE,
+                null,
+                1,
                 null
-
         );
     }
     private Task buildTask() {
@@ -193,6 +196,8 @@ public class EventServiceTest {
                 Set.of(1L,2L,3L),
                 true,
                 RecurrenceType.NONE,
+                null,
+                1,
                 null
 
         );

@@ -285,9 +285,9 @@ class SquadServiceTest {
         squadMember3.setVisibility(EventVisibility.MUTED);
 
 
-        Task task1 = new Task(1L,"title","des",Time1,Time2,true,true,RecurrenceType.DAILY, null);
-        Task task2 = new Task(2L,"title","des",Time1,Time2,true,false,RecurrenceType.NONE, null);
-        Task task3 = new Task(3L,"title","des",Time1,Time2,true,false,RecurrenceType.NONE, null);
+        Task task1 = new Task(1L,"title","des",Time1,Time2,true,true,RecurrenceType.DAILY,  null, 1, null);
+        Task task2 = new Task(2L,"title","des",Time1,Time2,true,false,RecurrenceType.NONE,  null, 1, null);
+        Task task3 = new Task(3L,"title","des",Time1,Time2,true,false,RecurrenceType.NONE,  null, 1, null);
 
 
        UserTasks ut1 = new UserTasks();
