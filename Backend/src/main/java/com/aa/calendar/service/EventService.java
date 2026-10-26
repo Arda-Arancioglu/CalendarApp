@@ -57,6 +57,8 @@ public class EventService {
         task.setPrivate(dto.isPrivate() != null && dto.isPrivate());
         task.setRecurrenceType(dto.recurrenceType());
         task.setRecurrenceEndDate(dto.recurrenceEndDate());
+        task.setRecurrenceInterval(dto.recurrenceInterval());
+        task.setRecurrenceDays(dto.recurrenceDays());
 
         Task saved = taskRepository.save(task);
 
@@ -148,7 +150,9 @@ public class EventService {
                 categoryDTOs,
                 task.isPrivate(),
                 task.getRecurrenceType(),
-                task.getRecurrenceEndDate()
+                task.getRecurrenceEndDate(),
+                task.getRecurrenceInterval(),
+                task.getRecurrenceDays()
 
 
         );
@@ -197,6 +201,8 @@ public class EventService {
         task.setPrivate(dto.isPrivate() != null && dto.isPrivate());
         task.setRecurrenceType(dto.recurrenceType());
         task.setRecurrenceEndDate(dto.recurrenceEndDate());
+        task.setRecurrenceInterval(dto.recurrenceInterval());
+        task.setRecurrenceDays(dto.recurrenceDays());
         taskRepository.save(task);
 
         if (dto.categoryIds()!=null){

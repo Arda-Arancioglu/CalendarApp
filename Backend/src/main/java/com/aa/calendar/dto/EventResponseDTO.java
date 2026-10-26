@@ -7,7 +7,7 @@ import java.util.Set;
 
 public record EventResponseDTO(
 
-        String occurenceId,
+        String occurrenceId,
         Long taskId,
         String title,
         String description,
@@ -17,6 +17,8 @@ public record EventResponseDTO(
         Set<CategoryResponseDTO> categories,
         Boolean isPrivate,
         RecurrenceType recurrenceType,
-        LocalDate recurrenceEndDate
+        LocalDate recurrenceEndDate,
+        Integer  recurrenceInterval,
+        String recurrenceDays
 
 ) {}

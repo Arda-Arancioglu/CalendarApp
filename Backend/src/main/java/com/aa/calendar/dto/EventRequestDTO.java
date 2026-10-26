@@ -32,7 +32,11 @@ public record EventRequestDTO (
 
         RecurrenceType recurrenceType,
 
-        LocalDate recurrenceEndDate
+        LocalDate recurrenceEndDate,
+
+        Integer  recurrenceInterval,
+
+        String recurrenceDays
 
 
 ){
@@ -57,6 +61,9 @@ public record EventRequestDTO (
                 }
                 if (recurrenceType == null) {
                         recurrenceType = RecurrenceType.NONE;
+                }
+                if(recurrenceInterval==null||recurrenceInterval<1){
+                        recurrenceInterval = 1;
                 }
 
         }

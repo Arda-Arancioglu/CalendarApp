@@ -42,4 +42,8 @@ public class Task {
     private RecurrenceType recurrenceType = RecurrenceType.NONE;
 
     private LocalDate recurrenceEndDate;
+
+    private Integer recurrenceInterval=1;
+
+    private String recurrenceDays;
 }
