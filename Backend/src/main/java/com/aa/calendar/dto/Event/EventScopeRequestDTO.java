@@ -1,4 +1,4 @@
-package com.aa.calendar.dto;
+package com.aa.calendar.dto.Event;
 
 import com.aa.calendar.entity.RecurrenceScope;
 import jakarta.validation.constraints.NotNull;

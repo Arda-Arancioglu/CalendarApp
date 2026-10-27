@@ -1,7 +1,7 @@
 package com.aa.calendar.service;
 
-import com.aa.calendar.dto.CategoryRequestDTO;
-import com.aa.calendar.dto.CategoryResponseDTO;
+import com.aa.calendar.dto.Category.CategoryRequestDTO;
+import com.aa.calendar.dto.Category.CategoryResponseDTO;
 import com.aa.calendar.entity.Category;
 import com.aa.calendar.entity.User;
 import com.aa.calendar.exception.BadRequestException;

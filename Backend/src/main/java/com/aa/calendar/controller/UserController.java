@@ -1,7 +1,7 @@
 package com.aa.calendar.controller;
 
-import com.aa.calendar.dto.ThemeUpdateRequestDTO;
-import com.aa.calendar.dto.UserResponseDTO;
+import com.aa.calendar.dto.User.ThemeUpdateRequestDTO;
+import com.aa.calendar.dto.User.UserResponseDTO;
 import com.aa.calendar.service.UserService;
 
 import jakarta.validation.Valid;

@@ -1,9 +1,9 @@
 package com.aa.calendar.service;
 
 
-import com.aa.calendar.dto.RegisterRequest;
-import com.aa.calendar.dto.ThemeUpdateRequestDTO;
-import com.aa.calendar.dto.UserResponseDTO;
+import com.aa.calendar.dto.Auth.RegisterRequest;
+import com.aa.calendar.dto.User.ThemeUpdateRequestDTO;
+import com.aa.calendar.dto.User.UserResponseDTO;
 
 import com.aa.calendar.entity.User;
 

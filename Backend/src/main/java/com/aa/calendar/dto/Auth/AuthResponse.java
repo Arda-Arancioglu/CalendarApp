@@ -1,4 +1,4 @@
-package com.aa.calendar.dto;
+package com.aa.calendar.dto.Auth;
 
 public record AuthResponse(
         String token,

@@ -1,12 +1,11 @@
 package com.aa.calendar.service;
 
-import com.aa.calendar.dto.SquadKickRequestDTO;
-import com.aa.calendar.dto.UpdateRoleRequestDTO;
-import com.aa.calendar.dto.UpdateVisibilityRequestDTO;
+import com.aa.calendar.dto.Squad.SquadKickRequestDTO;
+import com.aa.calendar.dto.Squad.UpdateRoleRequestDTO;
+import com.aa.calendar.dto.Squad.UpdateVisibilityRequestDTO;
 import com.aa.calendar.entity.*;
 import com.aa.calendar.exception.AccessDeniedException;
 import com.aa.calendar.repository.*;
-import jakarta.validation.constraints.Null;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

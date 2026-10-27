@@ -1,4 +1,4 @@
-package com.aa.calendar.dto;
+package com.aa.calendar.dto.User;
 
 public record UserResponseDTO(
 

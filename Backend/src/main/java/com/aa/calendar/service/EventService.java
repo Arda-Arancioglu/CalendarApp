@@ -1,6 +1,9 @@
 package com.aa.calendar.service;
 
-import com.aa.calendar.dto.*;
+import com.aa.calendar.dto.Category.CategoryResponseDTO;
+import com.aa.calendar.dto.Event.EventRequestDTO;
+import com.aa.calendar.dto.Event.EventResponseDTO;
+import com.aa.calendar.dto.Event.EventScopeRequestDTO;
 import com.aa.calendar.entity.*;
 import com.aa.calendar.exception.BadRequestException;
 import com.aa.calendar.exception.ResourceNotFoundException;

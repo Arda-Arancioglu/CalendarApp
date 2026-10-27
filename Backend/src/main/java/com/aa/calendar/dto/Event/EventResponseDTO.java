@@ -1,4 +1,5 @@
-package com.aa.calendar.dto;
+package com.aa.calendar.dto.Event;
+import com.aa.calendar.dto.Category.CategoryResponseDTO;
 import com.aa.calendar.entity.RecurrenceType;
 
 import java.time.LocalDate;

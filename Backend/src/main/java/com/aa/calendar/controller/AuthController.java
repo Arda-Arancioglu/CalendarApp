@@ -1,9 +1,9 @@
 package com.aa.calendar.controller;
 
 
-import com.aa.calendar.dto.AuthResponse;
-import com.aa.calendar.dto.LoginRequest;
-import com.aa.calendar.dto.RegisterRequest;
+import com.aa.calendar.dto.Auth.AuthResponse;
+import com.aa.calendar.dto.Auth.LoginRequest;
+import com.aa.calendar.dto.Auth.RegisterRequest;
 import com.aa.calendar.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

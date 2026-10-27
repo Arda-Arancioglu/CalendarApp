@@ -1,7 +1,7 @@
 package com.aa.calendar.service;
 
-import com.aa.calendar.dto.CategoryResponseDTO;
-import com.aa.calendar.dto.EventResponseDTO;
+import com.aa.calendar.dto.Category.CategoryResponseDTO;
+import com.aa.calendar.dto.Event.EventResponseDTO;
 import com.aa.calendar.entity.RecurrenceType;
 import com.aa.calendar.entity.Task;
 import com.aa.calendar.entity.TaskException;

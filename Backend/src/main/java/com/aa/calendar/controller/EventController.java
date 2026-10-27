@@ -1,7 +1,8 @@
 package com.aa.calendar.controller;
 
-import com.aa.calendar.dto.*;
-
+import com.aa.calendar.dto.Event.EventRequestDTO;
+import com.aa.calendar.dto.Event.EventResponseDTO;
+import com.aa.calendar.dto.Event.EventScopeRequestDTO;
 import com.aa.calendar.service.EventService;
 
 import jakarta.validation.Valid;
@@ -27,7 +28,7 @@ public class EventController {
 
     @PostMapping
     public ResponseEntity<EventResponseDTO> create(@Valid @RequestBody EventRequestDTO request
-            ,Authentication authentication) {
+            , Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         EventResponseDTO created = service.create(request,userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);

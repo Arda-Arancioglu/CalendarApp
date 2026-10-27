@@ -1,6 +1,7 @@
 package com.aa.calendar.service;
 
-import com.aa.calendar.dto.*;
+import com.aa.calendar.dto.Event.EventResponseDTO;
+import com.aa.calendar.dto.Squad.*;
 import com.aa.calendar.entity.*;
 import com.aa.calendar.exception.AccessDeniedException;
 import com.aa.calendar.exception.BadRequestException;

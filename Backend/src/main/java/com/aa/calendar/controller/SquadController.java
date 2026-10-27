@@ -1,6 +1,6 @@
 package com.aa.calendar.controller;
 
-import com.aa.calendar.dto.*;
+import com.aa.calendar.dto.Squad.*;
 import com.aa.calendar.service.SquadService;
 
 import jakarta.validation.Valid;

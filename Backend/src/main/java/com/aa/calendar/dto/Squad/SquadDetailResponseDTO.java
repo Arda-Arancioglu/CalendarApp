@@ -1,4 +1,4 @@
-package com.aa.calendar.dto;
+package com.aa.calendar.dto.Squad;
 
 import com.aa.calendar.entity.EventVisibility;
 import com.aa.calendar.entity.SquadRole;

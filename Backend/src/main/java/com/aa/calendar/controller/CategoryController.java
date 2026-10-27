@@ -1,7 +1,7 @@
 package com.aa.calendar.controller;
 
-import com.aa.calendar.dto.CategoryRequestDTO;
-import com.aa.calendar.dto.CategoryResponseDTO;
+import com.aa.calendar.dto.Category.CategoryRequestDTO;
+import com.aa.calendar.dto.Category.CategoryResponseDTO;
 import com.aa.calendar.service.CategoryService;
 import jakarta.validation.Valid;
 

@@ -1,4 +1,4 @@
-package com.aa.calendar.dto;
+package com.aa.calendar.dto.Auth;
 
 import java.time.LocalDate;
 
