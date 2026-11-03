@@ -9,6 +9,7 @@ import com.aa.calendar.entity.User;
 import com.aa.calendar.exception.BadRequestException;
 import com.aa.calendar.repository.RoutineRepository;
 import com.aa.calendar.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +26,7 @@ public class RoutineService {
 
 
     //create routine
+    @Transactional
     public RoutineResponseDTO createRoutine(Long userId, RoutineRequestDTO dto){
        User user = userRepository.findById(userId)
                 .orElseThrow(()-> new BadRequestException("User couldn't be found"));
@@ -83,8 +85,19 @@ public class RoutineService {
         return myList;
     }
 
-
     //get user routines
+    @Transactional
+    public List<RoutineResponseDTO> getUserRoutines(Long userId){
+        if(!userRepository.existsById(userId)){
+            throw new  BadRequestException("User not found");
+        }
+        List<Routine> routines = routineRepository.findByUser_UserId(userId).stream().toList();
+        List<RoutineResponseDTO> response = new ArrayList<>();
+        for(Routine routine:routines){
+            response.add(mapToDtoRoutine(routine));
+        }
+        return response;
+    }
 
     //get routine occurrences
 
