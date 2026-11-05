@@ -1,14 +1,13 @@
 package com.aa.calendar.service;
 
-import com.aa.calendar.dto.Routine.RoutineItemDTO;
-import com.aa.calendar.dto.Routine.RoutineOccurrenceDTO;
-import com.aa.calendar.dto.Routine.RoutineRequestDTO;
-import com.aa.calendar.dto.Routine.RoutineResponseDTO;
+import com.aa.calendar.dto.Routine.*;
 import com.aa.calendar.entity.Routine;
 import com.aa.calendar.entity.RoutineItem;
+import com.aa.calendar.entity.RoutineShift;
 import com.aa.calendar.entity.User;
 import com.aa.calendar.exception.BadRequestException;
 import com.aa.calendar.repository.RoutineRepository;
+import com.aa.calendar.repository.RoutineShiftRepository;
 import com.aa.calendar.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +27,7 @@ public class RoutineService {
 
     private final UserRepository userRepository;
     private final RoutineRepository routineRepository;
+    private final RoutineShiftRepository routineShiftRepository;
 
 
     //create routine
@@ -120,6 +120,8 @@ public class RoutineService {
             for(RoutineItem item : routine.getItems()){
                 itemMap.put(item.getDayIndex(),item);
             }
+            List<RoutineShift> shifts = routineShiftRepository
+                    .findByRoutine_RoutineIdOrderByShiftDateAsc(routine.getRoutineId());
             for(LocalDate current = fromDate ; !current.isAfter(endDate); current = current.plusDays(1)){
                 if(current.isBefore(routine.getStartDate())){
                     continue;
@@ -127,9 +129,17 @@ public class RoutineService {
                 if(routine.getEndDate()!= null && current.isAfter(routine.getEndDate())){
                     continue;
                 }
+                int totalShift= 0;
+                for(RoutineShift s: shifts){
+                    if(!current.isBefore(s.getShiftDate())){
+                        totalShift+=s.getShiftDays();
+                    }
+                }
                 long daysBetween = ChronoUnit.DAYS.between(routine.getStartDate(),current);
 
-                int cycleDayIndex = (int) Math.floorMod(daysBetween,routine.getCycleLength());
+                long effectiveDay = daysBetween - totalShift;
+
+                int cycleDayIndex = (int) Math.floorMod(effectiveDay,routine.getCycleLength());
 
                 RoutineItem item = itemMap.get(cycleDayIndex);
 
@@ -163,6 +173,33 @@ public class RoutineService {
 
 
     // shift routine
+    @Transactional
+    public void shiftRoutine(Long userId, Long routineId , RoutineShiftRequestDTO dto){
+        Routine routine = routineRepository.findById(routineId)
+                .orElseThrow(()-> new BadRequestException("Routine not found with id"+ routineId));
+
+        if(!routine.getUser().getUserId().equals(userId)){
+            throw new BadRequestException("You do NOT have permission to shift this routine");
+        }
+
+        if (dto.shiftDays() <= 0){
+            throw new BadRequestException("Shift days must be greater than or equal to 1");
+        }
+
+        RoutineShift shift = new RoutineShift();
+
+        shift.setRoutine(routine);
+        shift.setShiftDate(dto.shiftDate());
+        shift.setShiftDays(dto.shiftDays());
+        routineShiftRepository.save(shift);
+
+        if(dto.extendEndDate() && routine.getEndDate() != null){
+            routine.setEndDate(routine.getEndDate().plusDays(dto.shiftDays()));
+            routineRepository.save(routine);
+        }
+
+
+    }
 
 
 

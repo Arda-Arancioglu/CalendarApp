@@ -3,6 +3,7 @@ package com.aa.calendar.controller;
 import com.aa.calendar.dto.Routine.RoutineOccurrenceDTO;
 import com.aa.calendar.dto.Routine.RoutineRequestDTO;
 import com.aa.calendar.dto.Routine.RoutineResponseDTO;
+import com.aa.calendar.dto.Routine.RoutineShiftRequestDTO;
 import com.aa.calendar.service.RoutineService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -47,4 +48,13 @@ public class RoutineController {
         return ResponseEntity.ok().body(routineService.getRoutineOccurrence(userId,fromDate,endDate));
     }
 
+    @PostMapping("/{id}/shift")
+    public ResponseEntity<Void> shiftRoutine(@PathVariable Long id,
+                                             @Valid @RequestBody RoutineShiftRequestDTO dto,
+                                             Authentication authentication){
+        Long userId = (Long) authentication.getPrincipal();
+        routineService.shiftRoutine(userId,id,dto);
+        return ResponseEntity.ok().build();
+
+    }
 }
