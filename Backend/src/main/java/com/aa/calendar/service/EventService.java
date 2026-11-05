@@ -62,6 +62,7 @@ public class EventService {
         task.setRecurrenceEndDate(dto.recurrenceEndDate());
         task.setRecurrenceInterval(dto.recurrenceInterval());
         task.setRecurrenceDays(dto.recurrenceDays());
+        task.setEmoji(dto.emoji());
 
         Task saved = taskRepository.save(task);
 
@@ -155,7 +156,8 @@ public class EventService {
                 task.getRecurrenceType(),
                 task.getRecurrenceEndDate(),
                 task.getRecurrenceInterval(),
-                task.getRecurrenceDays()
+                task.getRecurrenceDays(),
+                task.getEmoji()
 
 
         );
@@ -206,6 +208,8 @@ public class EventService {
         task.setRecurrenceEndDate(dto.recurrenceEndDate());
         task.setRecurrenceInterval(dto.recurrenceInterval());
         task.setRecurrenceDays(dto.recurrenceDays());
+        task.setEmoji(dto.emoji());
+
         taskRepository.save(task);
 
         if (dto.categoryIds()!=null){

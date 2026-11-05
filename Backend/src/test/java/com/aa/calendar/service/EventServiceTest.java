@@ -68,6 +68,7 @@ public class EventServiceTest {
                RecurrenceType.NONE,
                null,
                1,
+               null,
                null
 
        );
@@ -84,6 +85,7 @@ public class EventServiceTest {
                 RecurrenceType.NONE,
                 null,
                 1,
+                null,
                 null
         );
     }
@@ -198,6 +200,7 @@ public class EventServiceTest {
                 RecurrenceType.NONE,
                 null,
                 1,
+                null,
                 null
 
         );

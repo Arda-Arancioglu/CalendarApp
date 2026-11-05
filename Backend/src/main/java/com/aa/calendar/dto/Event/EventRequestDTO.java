@@ -36,7 +36,11 @@ public record EventRequestDTO (
 
         Integer  recurrenceInterval,
 
-        String recurrenceDays
+        String recurrenceDays,
+
+        @Size(max = 16, message = "Emoji cannot be longer than 16 characters")
+        String emoji
+
 
 
 ){

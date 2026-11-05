@@ -20,6 +20,7 @@ public record EventResponseDTO(
         RecurrenceType recurrenceType,
         LocalDate recurrenceEndDate,
         Integer  recurrenceInterval,
-        String recurrenceDays
+        String recurrenceDays,
+        String emoji
 
 ) {}

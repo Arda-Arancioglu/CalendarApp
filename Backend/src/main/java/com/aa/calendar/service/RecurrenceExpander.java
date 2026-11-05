@@ -156,7 +156,8 @@ public class RecurrenceExpander {
                 task.getRecurrenceType(),
                 task.getRecurrenceEndDate(),
                 task.getRecurrenceInterval(),
-                task.getRecurrenceDays()
+                task.getRecurrenceDays(),
+                task.getEmoji()
         );
     }
 

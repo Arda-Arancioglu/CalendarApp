@@ -46,4 +46,6 @@ public class Task {
     private Integer recurrenceInterval=1;
 
     private String recurrenceDays;
+
+    private String emoji = "";
 }
