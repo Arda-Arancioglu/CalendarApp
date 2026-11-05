@@ -40,6 +40,7 @@ public class Routine {
     @OneToMany(mappedBy = "routine",cascade=CascadeType.ALL,orphanRemoval = true)
     private List<RoutineItem> items=new ArrayList<>();
 
+    private boolean isActive=true;
 
 
 

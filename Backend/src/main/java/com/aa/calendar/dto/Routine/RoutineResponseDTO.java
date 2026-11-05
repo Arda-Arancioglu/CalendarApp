@@ -11,7 +11,8 @@ public record RoutineResponseDTO(
         LocalDate startDate,
         LocalDate endDate,
         String color,
-        List<RoutineItemDTO> items
+        List<RoutineItemDTO> items,
+        boolean isActive
 
 ) {
 }

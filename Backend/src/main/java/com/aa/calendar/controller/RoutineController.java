@@ -55,6 +55,33 @@ public class RoutineController {
         Long userId = (Long) authentication.getPrincipal();
         routineService.shiftRoutine(userId,id,dto);
         return ResponseEntity.ok().build();
-
     }
+
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteRoutine(@PathVariable Long id,Authentication authentication){
+        Long userId = (Long) authentication.getPrincipal();
+        routineService.deleteRoutine(userId,id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/{id}/deactivate")
+    public ResponseEntity<RoutineResponseDTO> deactivateRoutine(@PathVariable Long id ,
+                                                                Authentication authentication,
+                                                                @RequestParam(required = false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE)LocalDate stopDate){
+        Long userId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok().body(routineService.deactivateRoutine(userId,id,stopDate));
+    }
+
+    @PatchMapping("/{id}/activate")
+    public ResponseEntity<RoutineResponseDTO> activateRoutine(@PathVariable Long id ,
+                                                                Authentication authentication,
+                                                                @RequestParam(required = false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE)LocalDate activateDate,
+                                                              @RequestParam(required = false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE)LocalDate newEndDate){
+        Long userId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok().body(routineService.activateRoutine(userId,id,activateDate,newEndDate));
+    }
+
+
+
 }

@@ -71,7 +71,8 @@ public class RoutineService {
                 routine.getStartDate(),
                 routine.getEndDate(),
                 routine.getColor(),
-                mapToDtoItem(routine)
+                mapToDtoItem(routine),
+                routine.isActive()
         );
     }
     private List<RoutineItemDTO> mapToDtoItem(Routine routine){
@@ -130,10 +131,19 @@ public class RoutineService {
                     continue;
                 }
                 int totalShift= 0;
+                boolean isSkippedDay =false;
                 for(RoutineShift s: shifts){
+                    LocalDate shiftEndExclusive = s.getShiftDate().plusDays((s.getShiftDays()));
+                    if(!current.isBefore(s.getShiftDate())  && current.isBefore(shiftEndExclusive) ){
+                        isSkippedDay=true;
+                        break;
+                    }
                     if(!current.isBefore(s.getShiftDate())){
                         totalShift+=s.getShiftDays();
                     }
+                }
+                if(isSkippedDay){
+                    continue;
                 }
                 long daysBetween = ChronoUnit.DAYS.between(routine.getStartDate(),current);
 
@@ -201,7 +211,46 @@ public class RoutineService {
 
     }
 
+    @Transactional
+    public void deleteRoutine(Long userId, Long routineId){
+        Routine routine = routineRepository.findByUser_UserIdAndRoutineId(userId,routineId)
+                .orElseThrow(()-> new BadRequestException("User doesn't have the routine"));
+       routineShiftRepository.deleteByRoutine_RoutineId(routineId);
+       routineRepository.delete(routine);
+    }
 
+    @Transactional
+    public  RoutineResponseDTO deactivateRoutine(Long userId, Long routineId, LocalDate stopDate){
+        Routine routine = routineRepository.findByUser_UserIdAndRoutineId(userId,routineId)
+                .orElseThrow(()-> new BadRequestException("User doesn't have the routine"));
+        routine.setActive(false);
+        routine.setEndDate(stopDate!=null ? stopDate : LocalDate.now());
+        routineRepository.save(routine);
+        return mapToDtoRoutine(routine);
 
+    }
+
+    @Transactional
+    public  RoutineResponseDTO activateRoutine(Long userId, Long routineId, LocalDate activateDate , LocalDate newEndDate){
+        Routine routine = routineRepository.findByUser_UserIdAndRoutineId(userId,routineId)
+                .orElseThrow(()-> new BadRequestException("User doesn't have the routine"));
+        LocalDate startAgain = (activateDate !=null) ? activateDate : LocalDate.now();
+
+        if(routine.getEndDate() != null && routine.getEndDate().isBefore(startAgain)){
+            long gapDays = ChronoUnit.DAYS.between(routine.getEndDate().plusDays(1),startAgain);
+            if (gapDays>0){
+                RoutineShift shift = new RoutineShift();
+                shift.setRoutine(routine);
+                shift.setShiftDate(routine.getEndDate().plusDays(1));
+                shift.setShiftDays((int)gapDays);
+                routineShiftRepository.save(shift);
+            }
+        }
+        routine.setActive(true);
+        routine.setEndDate(newEndDate);
+        routineRepository.save(routine);
+
+        return mapToDtoRoutine(routine);
+    }
 
 }

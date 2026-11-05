@@ -10,4 +10,6 @@ import java.util.List;
 public interface RoutineShiftRepository extends JpaRepository<RoutineShift, Long >{
 
     List<RoutineShift> findByRoutine_RoutineIdOrderByShiftDateAsc(Long routineId);
+
+    void deleteByRoutine_RoutineId(Long routineId);
 }
