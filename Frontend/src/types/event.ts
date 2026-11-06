@@ -26,6 +26,7 @@ export interface EventResponseDTO {
   occurrenceId?: string;
   title: string;
   description: string | null;
+  emoji?: string | null;
   startTime: ApiDateTime;
   endTime: ApiDateTime;
   isFlexible: boolean;
@@ -41,6 +42,7 @@ export interface EventResponseDTO {
 export interface EventRequestDTO {
   title: string;
   description?: string;
+  emoji?: string | null;
   startTime: ApiDateTime;
   endTime: ApiDateTime;
   isFlexible?: boolean;

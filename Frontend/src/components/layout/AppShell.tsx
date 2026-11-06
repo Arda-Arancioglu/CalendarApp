@@ -5,6 +5,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Dumbbell,
   LogOut,
   Menu,
   Palette,
@@ -19,6 +20,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Logo } from './Logo';
+import { useRoutines } from '../../hooks/useRoutines';
 import { useAuth } from '../../hooks/useAuth';
 import { useMySquads, useReorderFavoriteSquads } from '../../hooks/useSquads';
 import { useTheme } from '../../hooks/useTheme';
@@ -40,10 +42,12 @@ interface NavItem {
   to: string;
   label: string;
   icon: LucideIcon;
+  badge?: 'activeRoutines';
 }
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/calendar', label: 'My calendar', icon: CalendarDays },
+  { to: '/routines', label: 'Routines', icon: Dumbbell, badge: 'activeRoutines' },
   { to: '/squads', label: 'Squads', icon: Users },
   { to: '/categories', label: 'Categories', icon: Tags },
   { to: '/settings', label: 'Settings', icon: Settings },
@@ -56,17 +60,24 @@ function NavLinks({
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
+  const { data: routines = [] } = useRoutines();
+  const activeRoutineCount = routines.filter((r) => r.isActive).length;
+
   return (
     <nav aria-label="Main" className="flex flex-col gap-1">
-      {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+      {NAV_ITEMS.map(({ to, label, icon: Icon, badge }) => (
         <NavLink
           key={to}
           to={to}
           onClick={onNavigate}
-          title={collapsed ? label : undefined}
+          title={
+            collapsed
+              ? `${label}${badge === 'activeRoutines' && activeRoutineCount > 0 ? ` (${activeRoutineCount} active)` : ''}`
+              : undefined
+          }
           className={({ isActive }) =>
             cn(
-              'group flex items-center rounded-lg py-2.5 text-sm font-medium transition-colors',
+              'group relative flex items-center rounded-lg py-2.5 text-sm font-medium transition-colors',
               collapsed ? 'justify-center px-2' : 'gap-3 px-3',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400',
               isActive
@@ -84,7 +95,18 @@ function NavLinks({
                 )}
                 aria-hidden="true"
               />
-              {!collapsed && <span className="truncate">{label}</span>}
+              {!collapsed && <span className="flex-1 truncate">{label}</span>}
+              {badge === 'activeRoutines' && activeRoutineCount > 0 &&
+                (collapsed ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-dark-surface"
+                  />
+                ) : (
+                  <span className="shrink-0 rounded-md bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-300 ring-1 ring-inset ring-emerald-500/25">
+                    {activeRoutineCount}
+                  </span>
+                ))}
             </>
           )}
         </NavLink>

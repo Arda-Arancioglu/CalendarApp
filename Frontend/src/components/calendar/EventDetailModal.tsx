@@ -132,7 +132,16 @@ export function EventDetailModal({
               backgroundColor: withAlpha(primaryColor, 0.14),
             }}
           >
-            <h3 className="text-lg font-semibold text-zinc-50">{event.title}</h3>
+            <div className="flex items-start gap-2.5">
+              {event.emoji?.trim() && (
+                <span className="shrink-0 select-none text-2xl leading-tight" aria-label="Event emoji">
+                  {event.emoji}
+                </span>
+              )}
+              <h3 className="min-w-0 flex-1 break-words text-lg font-semibold text-zinc-50">
+                {event.title}
+              </h3>
+            </div>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-300">
               <CalendarClock className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden="true" />
               <span>
@@ -272,8 +281,11 @@ export function EventDetailModal({
         description={
           <p>
             Are you sure you want to delete{' '}
-            <span className="font-semibold text-zinc-100">{event.title}</span>? This cannot be
-            undone.
+            <span className="font-semibold text-zinc-100">
+              {event.emoji ? `${event.emoji} ` : ''}
+              {event.title}
+            </span>
+            ? This cannot be undone.
           </p>
         }
       />

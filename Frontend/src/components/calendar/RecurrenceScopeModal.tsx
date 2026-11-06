@@ -190,7 +190,7 @@ export function RecurrenceCustomDatePicker({
 
           <div className="relative flex items-center">
             <Hash
-              className="pointer-events-none absolute left-2 h-3 w-3 text-zinc-500"
+              className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-zinc-500"
               aria-hidden="true"
             />
             <input
@@ -203,7 +203,7 @@ export function RecurrenceCustomDatePicker({
               onChange={(e) => handleCustomCountChange(e.target.value)}
               placeholder="e.g. 5"
               aria-label="Number of occurrences to select"
-              className="h-7 w-20 rounded-lg border border-dark-border bg-dark-surface pl-6 pr-2 text-xs font-semibold text-zinc-100 outline-none transition-colors placeholder:font-normal placeholder:text-zinc-500 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500/40 disabled:opacity-60"
+              className="h-9 w-24 rounded-lg border border-dark-border bg-dark-surface pl-7 pr-2.5 text-xs font-semibold text-zinc-100 outline-none transition-colors placeholder:font-normal placeholder:text-zinc-500 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500/40 disabled:opacity-60 sm:text-sm"
             />
           </div>
 
@@ -555,8 +555,11 @@ function ScopeModalBody({
       )}
 
       <p className="text-sm text-zinc-300">
-        <span className="font-semibold text-zinc-100">{event.title}</span> is a recurring event.
-        Which occurrences would you like to {isDelete ? 'delete' : 'update'}?
+        <span className="font-semibold text-zinc-100">
+          {event.emoji ? `${event.emoji} ` : ''}
+          {event.title}
+        </span>{' '}
+        is a recurring event. Which occurrences would you like to {isDelete ? 'delete' : 'update'}?
       </p>
 
       {/* 4 Radio Cards */}

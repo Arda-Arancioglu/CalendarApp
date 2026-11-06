@@ -1,4 +1,5 @@
 import type { DateRangeParams } from '../types/api';
+import type { RoutineOccurrencesRangeParams } from '../types/routine';
 
 /**
  * Query-key factories. Every query key in the app comes from here, so
@@ -17,6 +18,13 @@ export const queryKeys = {
     all: ['events'] as const,
     range: (range: DateRangeParams) => ['events', 'range', range.start, range.end] as const,
     detail: (eventId: number) => ['events', 'detail', eventId] as const,
+  },
+  routines: {
+    all: ['routines'] as const,
+    list: () => ['routines', 'list'] as const,
+    occurrencesAll: () => ['routines', 'occurrences'] as const,
+    occurrences: (range: RoutineOccurrencesRangeParams) =>
+      ['routines', 'occurrences', range.fromDate, range.endDate] as const,
   },
   squads: {
     all: ['squads'] as const,

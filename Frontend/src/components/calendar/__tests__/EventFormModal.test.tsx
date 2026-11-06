@@ -452,4 +452,37 @@ describe('EventFormModal component', () => {
     });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+  it('allows picking an emoji (such as books) and submits emoji in EventRequestDTO', async () => {
+    const user = userEvent.setup();
+    const { onSubmitPayload, onClose } = renderEventModal();
+
+    await user.type(screen.getByLabelText(/title/i), 'Study Session');
+
+    // Open emoji picker
+    await user.click(screen.getByRole('button', { name: /pick an emoji for this event/i }));
+
+    // Find and click the book emoji 📚
+    const bookEmojiButton = screen.getByRole('button', { name: '📚' });
+    await user.click(bookEmojiButton);
+
+    // Verify emoji button shows the selected emoji
+    expect(screen.getByRole('button', { name: /emoji: 📚/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /create event/i }));
+
+    await waitFor(() => {
+      expect(onSubmitPayload).toHaveBeenCalledTimes(1);
+    });
+
+    expect(onSubmitPayload).toHaveBeenCalledWith({
+      title: 'Study Session',
+      emoji: '📚',
+      startTime: '2026-10-20T10:00:00',
+      endTime: '2026-10-20T11:00:00',
+      isFlexible: false,
+      isPrivate: false,
+      categoryIds: [],
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

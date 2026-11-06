@@ -27,6 +27,7 @@ function normalizeEvent(raw: RawEventDTO): EventResponseDTO {
     eventId: resolvedId,
     taskId: resolvedId,
     ...(resolvedOccurrenceId !== undefined ? { occurrenceId: resolvedOccurrenceId } : {}),
+    emoji: raw.emoji ?? null,
     categories: Array.isArray(raw.categories) ? raw.categories : [],
   };
 }

@@ -7,7 +7,7 @@ export interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl';
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';
 }
 
 const maxWidthClasses = {
@@ -15,6 +15,9 @@ const maxWidthClasses = {
   md: 'max-w-md',
   lg: 'max-w-lg',
   xl: 'max-w-xl',
+  '2xl': 'max-w-2xl',
+  '3xl': 'max-w-3xl',
+  '4xl': 'max-w-4xl',
 } as const;
 
 export function Modal({
@@ -47,27 +50,30 @@ export function Modal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs animate-fade-in"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-xs animate-fade-in sm:items-center sm:p-4"
     >
       {/* Overlay click to close */}
       <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
 
-      {/* Modal Container */}
+      {/* Modal Container: bottom sheet on phones, centered dialog on larger screens */}
       <div
         className={cn(
-          'relative z-10 flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-2xl border border-dark-border bg-dark-surface text-zinc-100 shadow-2xl',
+          'relative z-10 flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-dark-border bg-dark-surface text-zinc-100 shadow-2xl sm:max-h-[90dvh] sm:rounded-2xl',
           maxWidthClasses[maxWidth],
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-dark-border bg-dark-elevated/60 px-5 py-4">
-          <h2 id="modal-title" className="text-base font-semibold tracking-tight text-zinc-100">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-dark-border bg-dark-elevated/60 px-4 py-3.5 sm:px-5 sm:py-4">
+          <h2
+            id="modal-title"
+            className="min-w-0 truncate text-base font-semibold tracking-tight text-zinc-100"
+          >
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-dark-hover hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+            className="shrink-0 rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-dark-hover hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
             aria-label="Close modal"
           >
             <X className="h-4 w-4" />
@@ -75,7 +81,7 @@ export function Modal({
         </div>
 
         {/* Content Body */}
-        <div className="overflow-y-auto p-5">{children}</div>
+        <div className="overflow-y-auto p-4 sm:p-5">{children}</div>
       </div>
     </div>
   );

@@ -17,6 +17,7 @@ export const HEX_COLOR_REGEX = /^#[A-Fa-f0-9]{6}$/;
 
 export const EVENT_TITLE_MAX = 100;
 export const EVENT_DESCRIPTION_MAX = 255;
+export const EVENT_EMOJI_MAX = 16;
 
 export const SQUAD_NAME_MAX = 100;
 export const SQUAD_DESCRIPTION_MAX = 255;
@@ -133,6 +134,7 @@ export const eventSchema = z
       .trim()
       .min(1, 'Title is required')
       .max(EVENT_TITLE_MAX, `Title must be at most ${EVENT_TITLE_MAX} characters`),
+    emoji: z.string().max(16, 'Emoji cannot be longer than 16 characters').optional(),
     description: z
       .string()
       .max(

@@ -1,10 +1,11 @@
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addHours, startOfHour } from 'date-fns';
-import { Infinity as InfinityIcon, Layers, Lock, Repeat, Waves } from 'lucide-react';
+import { Infinity as InfinityIcon, Layers, Lock, Repeat, Smile, Waves, X } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
+import { DateTime24Input } from '../ui/Time24Input';
 import { Textarea } from '../ui/Textarea';
 import { Toggle } from '../ui/Toggle';
 import { Button } from '../ui/Button';
@@ -38,6 +39,7 @@ import {
 } from '../../utils/recurrence';
 import {
   EVENT_DESCRIPTION_MAX,
+  EVENT_EMOJI_MAX,
   EVENT_TITLE_MAX,
   eventSchema,
   type EventFormValues,
@@ -91,6 +93,70 @@ export interface EventFormModalProps {
   onSubmitScopePayload?: (payload: EventScopeRequestDTO) => Promise<void> | void;
 }
 
+interface EmojiCategory {
+  name: string;
+  emojis: readonly string[];
+}
+
+const EMOJI_CATEGORIES: readonly EmojiCategory[] = [
+  {
+    name: 'Books & Study',
+    emojis: [
+      '📚', '📖', '📕', '📗', '📘', '📙', '📓', '📔', '📒', '📑', '🔖', '📜',
+      '📄', '📝', '✍️', '🖊️', '🖋️', '✏️', '🎓', '🎒', '📐', '📏', '🔬', '💡',
+    ],
+  },
+  {
+    name: 'Work & Tech',
+    emojis: [
+      '💼', '💻', '🖥️', '⌨️', '🖱️', '📱', '📊', '📈', '📉', '📋', '📁', '📂',
+      '🗂️', '🗓️', '✉️', '📞', '🔭', '🧪', '🧬', '🔍', '⚙️', '🖨️', '💾', '🏷️',
+    ],
+  },
+  {
+    name: 'Sports & Fitness',
+    emojis: [
+      '🏋️', '🏃', '🚴', '🧘', '🚶', '🧗', '🏊', '⚽', '🏀', '🎾', '🏐', '🏸',
+      '🥊', '🥋', '🛹', '⛷️', '🤸', '🎳', '🏆', '🥇', '👟', '⛳', '🏄', '🚵',
+    ],
+  },
+  {
+    name: 'Health & Mind',
+    emojis: [
+      '🩺', '💊', '🫀', '🧠', '🍎', '🥑', '🥗', '💧', '🌱', '🌿', '😴', '🧘‍♀️',
+      '🧴', '🩹', '❤️', '🧡', '💛', '💚', '💙', '💜', '🤍', '✨', '🪄', '🛁',
+    ],
+  },
+  {
+    name: 'Food & Drinks',
+    emojis: [
+      '☕', '🍵', '🧋', '🥤', '🍽️', '🍳', '🥐', '🥪', '🍕', '🍔', '🍟', '🍜',
+      '🍱', '🍣', '🌮', '🥗', '🍰', '🍫', '🍦', '🍇', '🍓', '🍷', '🍺', '🍻',
+    ],
+  },
+  {
+    name: 'Daily & Home',
+    emojis: [
+      '🏠', '🛋️', '🛏️', '🚿', '🧹', '🧺', '🛒', '📦', '🔑', '🚗', '🚌', '🚲',
+      '⛽', '💰', '💳', '🐕', '🐈', '🪴', '🌸', '☀️', '🌙', '👕', '👔', '⏰',
+    ],
+  },
+  {
+    name: 'Activities & Fun',
+    emojis: [
+      '🎉', '🎂', '✈️', '🧳', '🎮', '🕹️', '🎲', '♟️', '🧩', '🎵', '🎧', '🎸',
+      '🎹', '🎤', '🎬', '🍿', '🎨', '📸', '🏖️', '⛺', '🎆', '🎟️', '🎡', '🎭',
+    ],
+  },
+  {
+    name: 'Focus & Alerts',
+    emojis: [
+      '⏰', '⏱️', '⏲️', '⏳', '⌛', '🎯', '🔥', '⚡', '⭐', '🌟', '💎', '🔔',
+      '📢', '🚨', '⚠️', '🛡️', '✅', '❌', '🛑', '🏁', '📌', '🚀', '💯', '🔮',
+    ],
+  },
+] as const;
+
 function buildDefaultValues(
   sourceEvent?: EventResponseDTO | null,
   initialSlot?: EventSlotRange | null,
@@ -106,6 +172,7 @@ function buildDefaultValues(
 
     return {
       title: sourceEvent.title,
+      emoji: sourceEvent.emoji ?? '',
       description: sourceEvent.description ?? '',
       startTime: toInputDateTime(startDate),
       endTime: toInputDateTime(fromApiDateTime(sourceEvent.endTime)),
@@ -128,6 +195,7 @@ function buildDefaultValues(
 
   return {
     title: '',
+    emoji: '',
     description: '',
     startTime: toInputDateTime(defaultStart),
     endTime: toInputDateTime(defaultEnd),
@@ -200,7 +268,32 @@ function EventFormBody({
     defaultValues: initialDefaults,
   });
 
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [selectedEmojiCategory, setSelectedEmojiCategory] = useState<string>('All');
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isEmojiPickerOpen) return;
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setIsEmojiPickerOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsEmojiPickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isEmojiPickerOpen]);
+
   const watchedDescription = useWatch({ control, name: 'description' });
+  const watchedEmoji = useWatch({ control, name: 'emoji' });
   const watchedFlexible = useWatch({ control, name: 'isFlexible' });
   const watchedPrivate = useWatch({ control, name: 'isPrivate' });
   const watchedCategoryIds = useWatch({ control, name: 'categoryIds' });
@@ -209,6 +302,7 @@ function EventFormBody({
   const watchedRecurrenceDays = useWatch({ control, name: 'recurrenceDays' });
   const watchedRepeatForever = useWatch({ control, name: 'repeatForever' });
   const watchedStartTime = useWatch({ control, name: 'startTime' });
+  const watchedEndTime = useWatch({ control, name: 'endTime' });
 
   const toggleWeekdayPill = (day: WeekdayName) => {
     setDaysTouched(true);
@@ -266,8 +360,16 @@ function EventFormBody({
         activeDays[0] !== startWeekday ||
         Boolean(templateEvent?.recurrenceDays));
 
+    const trimmedEmoji = values.emoji?.trim();
+    const emojiPayload = trimmedEmoji
+      ? { emoji: trimmedEmoji }
+      : isEditing && templateEvent?.emoji
+        ? { emoji: null }
+        : {};
+
     const payload: EventRequestDTO = {
       title: values.title.trim(),
+      ...emojiPayload,
       ...(trimmedDesc !== '' ? { description: trimmedDesc } : {}),
       startTime: toApiDateTime(startDate),
       endTime: toApiDateTime(fromInputDateTime(values.endTime)),
@@ -369,19 +471,192 @@ function EventFormBody({
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
       {formError && <Alert variant="error">{formError}</Alert>}
 
-      <Input
-        label="Title"
-        placeholder="e.g. Team Standup, Study Session"
-        maxLength={EVENT_TITLE_MAX}
-        autoFocus
-        error={errors.title?.message}
-        {...register('title')}
-      />
+      {/* Title & Emoji Picker */}
+      <div className="w-full space-y-1.5">
+        <label htmlFor="event-title-input" className="block text-sm font-medium text-zinc-300">
+          Title
+        </label>
+        <div className="relative flex items-center gap-2">
+          {/* Emoji Picker Trigger & Popover */}
+          <div className="relative" ref={emojiPickerRef}>
+            <button
+              type="button"
+              onClick={() => setIsEmojiPickerOpen((prev) => !prev)}
+              aria-label={
+                watchedEmoji
+                  ? `Emoji: ${watchedEmoji} (click to change)`
+                  : 'Pick an emoji for this event'
+              }
+              title={watchedEmoji ? `Emoji: ${watchedEmoji} (click to change)` : 'Add emoji'}
+              className={cn(
+                'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-base transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400',
+                watchedEmoji
+                  ? 'border-indigo-400/50 bg-indigo-500/15 text-zinc-100 hover:bg-indigo-500/25'
+                  : 'border-dark-border bg-dark-bg/70 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200',
+              )}
+            >
+              {watchedEmoji ? (
+                <span className="text-xl leading-none">{watchedEmoji}</span>
+              ) : (
+                <Smile className="h-5 w-5" aria-hidden="true" />
+              )}
+            </button>
+
+            {isEmojiPickerOpen && (
+              <div
+                className="absolute left-0 top-13 z-50 w-84 max-w-[92vw] rounded-2xl border border-dark-border bg-dark-surface p-3.5 shadow-2xl backdrop-blur-md animate-fade-in sm:w-96"
+                role="dialog"
+                aria-label="Choose emoji"
+              >
+                <div className="mb-2 flex items-center justify-between border-b border-dark-border/80 pb-2">
+                  <span className="text-xs font-semibold text-zinc-100">Select Emoji</span>
+                  <div className="flex items-center gap-1.5">
+                    {watchedEmoji && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setValue('emoji', '', { shouldDirty: true, shouldValidate: true });
+                          setIsEmojiPickerOpen(false);
+                        }}
+                        className="rounded-md px-2 py-0.5 text-xs font-medium text-red-300 transition-colors hover:bg-red-500/15"
+                      >
+                        Clear
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsEmojiPickerOpen(false)}
+                      className="rounded-md p-1 text-zinc-400 transition-colors hover:bg-dark-hover hover:text-zinc-200"
+                      aria-label="Close emoji picker"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Category Pills */}
+                <div className="mb-2.5 flex items-center gap-1 overflow-x-auto pb-1 text-xs scrollbar-none">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEmojiCategory('All')}
+                    className={cn(
+                      'shrink-0 rounded-lg px-2.5 py-1 font-medium transition-colors',
+                      selectedEmojiCategory === 'All'
+                        ? 'bg-indigo-500/20 text-indigo-200 ring-1 ring-inset ring-indigo-400/30'
+                        : 'text-zinc-400 hover:bg-dark-hover hover:text-zinc-200',
+                    )}
+                  >
+                    All
+                  </button>
+                  {EMOJI_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.name}
+                      type="button"
+                      onClick={() => setSelectedEmojiCategory(cat.name)}
+                      className={cn(
+                        'shrink-0 rounded-lg px-2.5 py-1 font-medium transition-colors',
+                        selectedEmojiCategory === cat.name
+                          ? 'bg-indigo-500/20 text-indigo-200 ring-1 ring-inset ring-indigo-400/30'
+                          : 'text-zinc-400 hover:bg-dark-hover hover:text-zinc-200',
+                      )}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Emoji Grid */}
+                <div className="max-h-64 space-y-3 overflow-y-auto pr-1">
+                  {EMOJI_CATEGORIES.filter(
+                    (cat) => selectedEmojiCategory === 'All' || selectedEmojiCategory === cat.name,
+                  ).map((cat) => (
+                    <div key={cat.name}>
+                      <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                        {cat.name}
+                      </div>
+                      <div className="grid grid-cols-7 gap-1.5 sm:grid-cols-8">
+                        {cat.emojis.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => {
+                              setValue('emoji', emoji, { shouldDirty: true, shouldValidate: true });
+                              setIsEmojiPickerOpen(false);
+                            }}
+                            className={cn(
+                              'flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg text-xl sm:text-2xl transition-transform hover:scale-115 hover:bg-dark-hover active:scale-95',
+                              watchedEmoji === emoji &&
+                                'bg-indigo-500/25 ring-2 ring-indigo-400',
+                            )}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Custom Typing / Pasting input */}
+                <div className="mt-2.5 border-t border-dark-border/80 pt-2.5">
+                  <label className="flex items-center gap-2 text-xs text-zinc-400">
+                    <span className="shrink-0 text-xs font-medium">Custom:</span>
+                    <input
+                      type="text"
+                      placeholder="Paste or type any emoji"
+                      maxLength={EVENT_EMOJI_MAX}
+                      value={watchedEmoji ?? ''}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          setIsEmojiPickerOpen(false);
+                        }
+                      }}
+                      onChange={(e) =>
+                        setValue('emoji', e.target.value, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
+                      className="h-10 w-full rounded-lg border border-dark-border bg-dark-bg/80 px-3 text-xs sm:text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-400 focus:outline-none"
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <input
+              id="event-title-input"
+              type="text"
+              placeholder="e.g. Team Standup, Study Session"
+              maxLength={EVENT_TITLE_MAX}
+              autoFocus
+              aria-invalid={errors.title ? true : undefined}
+              className={cn(
+                'h-10 sm:h-11 w-full rounded-lg border bg-dark-bg/70 px-3.5 text-sm sm:text-base text-zinc-100 outline-none transition-colors placeholder:text-zinc-500',
+                'focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60',
+                errors.title
+                  ? 'border-red-500/70 focus:border-red-400 focus:ring-red-500/30'
+                  : 'border-dark-border focus:border-indigo-400 focus:ring-indigo-500/30',
+              )}
+              {...register('title')}
+            />
+          </div>
+        </div>
+        {errors.title && (
+          <p className="text-xs font-medium text-red-400">{errors.title.message}</p>
+        )}
+        {errors.emoji && (
+          <p className="text-xs font-medium text-red-400">{errors.emoji.message}</p>
+        )}
+      </div>
 
       <div className="grid gap-3.5 sm:grid-cols-2">
-        <Input
+        <DateTime24Input
           label="Start time"
-          type="datetime-local"
+          watchedValue={watchedStartTime}
           error={errors.startTime?.message}
           {...register('startTime', {
             onChange: (e) => {
@@ -392,9 +667,9 @@ function EventFormBody({
             },
           })}
         />
-        <Input
+        <DateTime24Input
           label="End time"
-          type="datetime-local"
+          watchedValue={watchedEndTime}
           error={errors.endTime?.message}
           {...register('endTime')}
         />
@@ -413,7 +688,7 @@ function EventFormBody({
           <select
             id={repeatSelectId}
             disabled={isSubmitting}
-            className="h-10 w-full rounded-lg border border-dark-border bg-dark-bg/70 px-3 text-sm text-zinc-100 outline-none transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-11 sm:h-10.5 w-full rounded-xl border border-dark-border bg-dark-bg/70 px-3 text-sm text-zinc-100 outline-none transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30 disabled:cursor-not-allowed disabled:opacity-60"
             {...register('recurrenceType', {
               onChange: (e) => {
                 if (e.target.value === 'WEEKLY' && watchedRecurrenceDays.length === 0) {
@@ -438,7 +713,7 @@ function EventFormBody({
         {watchedRecurrenceType !== 'NONE' && (
           <div className="space-y-3 pt-1">
             {/* Custom Interval: Every [ X ] [days/weeks/months/years] */}
-            <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-dark-border/80 bg-dark-surface/60 px-3 py-2">
+            <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-dark-border/80 bg-dark-surface/60 px-3 py-2">
               <label
                 htmlFor={intervalInputId}
                 className="text-xs font-medium text-zinc-300"
@@ -452,7 +727,7 @@ function EventFormBody({
                 max={99}
                 disabled={isSubmitting}
                 aria-label="Recurrence interval"
-                className="h-8 w-16 rounded-md border border-dark-border bg-dark-bg px-2.5 text-center text-xs font-semibold text-zinc-100 outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500/40"
+                className="h-10 w-24 rounded-lg border border-dark-border bg-dark-bg px-2.5 text-center text-xs sm:text-sm font-semibold text-zinc-100 outline-none transition-colors focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500/40"
                 {...register('recurrenceInterval', {
                   valueAsNumber: true,
                   onChange: () => setIntervalTouched(true),
@@ -470,7 +745,7 @@ function EventFormBody({
                 <div
                   role="group"
                   aria-label="Repeat on days of the week"
-                  className="flex flex-wrap items-center gap-1.5"
+                  className="flex flex-wrap items-center gap-1.5 sm:gap-2"
                 >
                   {WEEKDAY_OPTIONS.map((dayOpt) => {
                     const isSelected = watchedRecurrenceDays.includes(dayOpt.value);
@@ -484,7 +759,7 @@ function EventFormBody({
                         aria-pressed={isSelected}
                         title={dayOpt.fullLabel}
                         className={cn(
-                          'flex h-8 w-9 items-center justify-center rounded-lg border text-xs font-semibold transition-all',
+                          'flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl border text-xs sm:text-sm font-semibold transition-all',
                           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400',
                           isSelected
                             ? 'border-indigo-400 bg-indigo-500 text-white shadow-xs'
@@ -642,7 +917,7 @@ function EventFormBody({
         <Button
           type="submit"
           isLoading={isSubmitting}
-          loadingText="Saving…"
+          loadingText="Saving..."
           disabled={
             isEditing &&
             isRecurringEvent &&

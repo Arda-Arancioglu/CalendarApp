@@ -417,6 +417,39 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   transition: background-color 150ms, border-color 150ms, color 150ms;
 }
 
+/* Phones: stack the FullCalendar toolbar (title on top, nav + view switcher below) */
+@media (max-width: 639px) {
+  .fc .fc-header-toolbar {
+    display: grid !important;
+    grid-template-columns: auto auto;
+    justify-content: space-between;
+    row-gap: 0.625rem;
+  }
+
+  .fc .fc-header-toolbar .fc-toolbar-chunk:nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    text-align: center;
+  }
+
+  .fc .fc-toolbar-title {
+    font-size: 1rem !important;
+  }
+
+  .fc .fc-button {
+    padding: 0.35rem 0.55rem !important;
+  }
+
+  .fc .fc-col-header .fc-col-header-cell-cushion {
+    font-size: 0.65rem;
+    letter-spacing: 0;
+  }
+
+  .fc .fc-timegrid-slot-label .fc-timegrid-slot-label-cushion {
+    font-size: 0.65rem;
+  }
+}
+
 .fc .fc-button-group > .fc-button {
   border-radius: 0 !important;
 }

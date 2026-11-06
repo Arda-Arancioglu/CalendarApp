@@ -14,10 +14,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const show = useCallback((kind: ToastKind, message: string, options: ToastOptions = {}) => {
     const id = nextId.current++;
     setToasts((current) => {
-      // Don't stack identical messages (e.g. 3 queries failing at once while offline).
-      if (current.some((toast) => toast.kind === kind && toast.message === message)) return current;
+      // Replace any duplicate message so its auto-dismiss timer and action callback refresh.
+      const filtered = current.filter((toast) => !(toast.kind === kind && toast.message === message));
       // Keep at most 4 on screen.
-      return [...current, { id, kind, message, ...options }].slice(-4);
+      return [...filtered, { id, kind, message, ...options }].slice(-4);
     });
   }, []);
 

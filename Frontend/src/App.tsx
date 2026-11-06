@@ -12,6 +12,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { CategoriesPage } from './pages/CategoriesPage';
+import { RoutinesPage } from './pages/RoutinesPage';
 import { SquadsPage } from './pages/SquadsPage';
 import { SquadDetailPage } from './pages/SquadDetailPage';
 import { SquadCalendarPage } from './pages/SquadCalendarPage';
@@ -41,6 +42,7 @@ function AppProviders() {
             <Route element={<PrivateRoute />}>
               <Route element={<AppShell />}>
                 <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/routines" element={<RoutinesPage />} />
                 <Route path="/categories" element={<CategoriesPage />} />
                 <Route path="/squads" element={<SquadsPage />} />
                 <Route path="/squads/:id" element={<SquadDetailPage />} />
