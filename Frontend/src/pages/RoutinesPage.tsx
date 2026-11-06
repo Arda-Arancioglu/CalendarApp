@@ -323,6 +323,7 @@ export function RoutinesPage() {
         description="Manage your N-day cycle routines, pause active routines into passive history, or reactivate past routines from today."
         actions={
           <Button
+            className="w-full sm:w-auto justify-center"
             onClick={() => {
               setEditingRoutine(null);
               setCreateOpen(true);
@@ -337,7 +338,7 @@ export function RoutinesPage() {
       {/* Filter Tabs & Search Bar */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div
-          className="flex flex-wrap items-center gap-2"
+          className="grid grid-cols-3 gap-1.5 w-full sm:flex sm:w-auto sm:items-center sm:gap-2"
           role="tablist"
           aria-label="Routine status filters"
         >
@@ -347,7 +348,7 @@ export function RoutinesPage() {
             aria-selected={filterTab === 'all'}
             onClick={() => setFilterTab('all')}
             className={cn(
-              'rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors',
+              'inline-flex items-center justify-center rounded-xl px-2 py-2 sm:px-3.5 text-xs font-semibold transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400',
               filterTab === 'all'
                 ? 'bg-indigo-500/20 text-indigo-100 ring-1 ring-inset ring-indigo-400/40'
@@ -362,15 +363,15 @@ export function RoutinesPage() {
             aria-selected={filterTab === 'active'}
             onClick={() => setFilterTab('active')}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors',
+              'inline-flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 sm:px-3.5 text-xs font-semibold transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400',
               filterTab === 'active'
                 ? 'bg-indigo-500/20 text-indigo-100 ring-1 ring-inset ring-indigo-400/40'
                 : 'text-zinc-400 hover:bg-dark-hover hover:text-zinc-200',
             )}
           >
-            <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />
-            Active ({activeCount})
+            <span className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" aria-hidden="true" />
+            <span className="truncate">Active ({activeCount})</span>
           </button>
           <button
             type="button"
@@ -378,15 +379,15 @@ export function RoutinesPage() {
             aria-selected={filterTab === 'passive'}
             onClick={() => setFilterTab('passive')}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold transition-colors',
+              'inline-flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 sm:px-3.5 text-xs font-semibold transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400',
               filterTab === 'passive'
                 ? 'bg-indigo-500/20 text-indigo-100 ring-1 ring-inset ring-indigo-400/40'
                 : 'text-zinc-400 hover:bg-dark-hover hover:text-zinc-200',
             )}
           >
-            <span className="h-2 w-2 rounded-full bg-zinc-400" aria-hidden="true" />
-            Passive ({passiveCount})
+            <span className="h-2 w-2 rounded-full bg-zinc-400 shrink-0" aria-hidden="true" />
+            <span className="truncate">Passive ({passiveCount})</span>
           </button>
         </div>
 

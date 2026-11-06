@@ -62,8 +62,13 @@ export function Modal({
           maxWidthClasses[maxWidth],
         )}
       >
+        {/* Mobile bottom sheet grab handle */}
+        <div className="flex justify-center pt-2 pb-0.5 sm:hidden" aria-hidden="true">
+          <div className="h-1 w-10 rounded-full bg-zinc-600/80" />
+        </div>
+
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-dark-border bg-dark-elevated/60 px-4 py-3.5 sm:px-5 sm:py-4">
+        <div className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-3 border-b border-dark-border bg-dark-elevated/80 px-4 py-3 backdrop-blur-md sm:px-5 sm:py-3.5">
           <h2
             id="modal-title"
             className="min-w-0 truncate text-base font-semibold tracking-tight text-zinc-100"
@@ -81,7 +86,7 @@ export function Modal({
         </div>
 
         {/* Content Body */}
-        <div className="overflow-y-auto p-4 sm:p-5">{children}</div>
+        <div className="overflow-y-auto overscroll-contain p-3.5 sm:p-5">{children}</div>
       </div>
     </div>
   );

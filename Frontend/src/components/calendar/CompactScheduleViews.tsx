@@ -416,7 +416,7 @@ export function CompactScheduleView({
   return (
     <div
       data-testid="coordinate-compressed-grid"
-      className="overflow-x-auto"
+      className="overflow-x-auto rounded-xl border border-dark-border bg-dark-surface/50 overscroll-x-contain touch-pan-x scrollbar-thin"
     >
       <div className={visibleDays.length === 1 ? 'min-w-0' : 'min-w-[720px]'}>
         {/* Header Row: Time Column + Day Columns */}

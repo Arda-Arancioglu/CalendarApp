@@ -863,12 +863,12 @@ export function CalendarPage() {
         title="My calendar"
         description="Click any slot to schedule an event, build N-day cycle routines, or toggle Edit Schedule to batch changes."
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
             {isFetching && (
-              <span className="inline-flex items-center gap-1.5 text-xs text-zinc-400">
+              <div className="col-span-2 flex items-center justify-end gap-1.5 text-xs text-zinc-400 sm:col-auto sm:inline-flex">
                 <Spinner size="sm" label="Syncing calendar" />
                 <span className="hidden sm:inline">Syncing...</span>
-              </span>
+              </div>
             )}
 
             <Button
@@ -876,15 +876,17 @@ export function CalendarPage() {
               size="sm"
               onClick={() => setIsEditMode((prev) => !prev)}
               aria-pressed={isEditMode}
+              className="w-full justify-center sm:w-auto"
               leftIcon={<Pencil className="h-3.5 w-3.5" aria-hidden="true" />}
             >
-              {isEditMode ? 'Editing Schedule' : 'Edit Schedule'}
+              {isEditMode ? 'Editing' : 'Edit Schedule'}
             </Button>
 
             <Button
               variant="secondary"
               size="sm"
               onClick={() => setExportModalOpen(true)}
+              className="w-full justify-center sm:w-auto"
               leftIcon={<Camera className="h-3.5 w-3.5" aria-hidden="true" />}
             >
               Export View
@@ -894,6 +896,7 @@ export function CalendarPage() {
               variant="secondary"
               size="sm"
               onClick={() => setRoutineFormOpen(true)}
+              className="w-full justify-center sm:w-auto"
               leftIcon={<Dumbbell className="h-3.5 w-3.5" aria-hidden="true" />}
             >
               New routine
@@ -902,6 +905,7 @@ export function CalendarPage() {
             <Button
               size="sm"
               onClick={() => openNewEventModal()}
+              className="w-full justify-center sm:w-auto"
               leftIcon={<Plus className="h-4 w-4" aria-hidden="true" />}
             >
               New event
@@ -931,93 +935,95 @@ export function CalendarPage() {
         onClearFilter={() => setSelectedCategoryIds([])}
       />
 
-      {/* Schedule Layout Switcher + Custom Visible Hours Bar */}
-      <div className="mb-3 flex flex-col gap-3 rounded-xl border border-dark-border bg-dark-surface/75 px-3 py-2.5 sm:px-3.5 lg:flex-row lg:items-center lg:justify-between">
-        <div
-          className="grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap sm:items-center"
-          role="group"
-          aria-label="Schedule layout mode"
-        >
-          <span className="mr-1 hidden text-xs font-medium text-zinc-400 sm:inline">Layout:</span>
-          {SCHEDULE_LAYOUT_OPTIONS.map(({ id, label, title, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => switchToScheduleLayout(id)}
-              aria-pressed={scheduleLayout === id}
-              title={title}
-              className={`inline-flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors sm:justify-start sm:px-2.5 ${
-                scheduleLayout === id
-                  ? 'bg-indigo-500/20 text-indigo-100 ring-1 ring-inset ring-indigo-400/40'
-                  : 'text-zinc-400 hover:bg-dark-hover hover:text-zinc-200'
-              }`}
-            >
-              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span className="truncate">{label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Custom Visible Hours Range */}
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 text-zinc-400">
-            <Clock className="h-3.5 w-3.5 text-indigo-300" aria-hidden="true" />
-            <span>Visible hours:</span>
-          </span>
-
-          <select
-            aria-label="Visible start hour"
-            value={visibleStartTime}
-            onChange={(e) => {
-              const nextStart = e.target.value;
-              setVisibleStartTime(nextStart);
-              if (nextStart >= visibleEndTime) {
-                setVisibleEndTime('24:00');
-              }
-            }}
-            className="h-9 sm:h-9.5 rounded-xl border border-dark-border bg-dark-bg px-3 py-1 font-mono text-xs sm:text-sm text-zinc-100 transition-colors focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+        {/* Schedule Layout Switcher + Custom Visible Hours Bar */}
+        <div className="mb-3 flex flex-col gap-3 rounded-xl border border-dark-border bg-dark-surface/75 px-3 py-2.5 sm:px-3.5 lg:flex-row lg:items-center lg:justify-between">
+          <div
+            className="grid grid-cols-3 gap-1 sm:flex sm:flex-wrap sm:items-center sm:gap-1.5"
+            role="group"
+            aria-label="Schedule layout mode"
           >
-            {START_HOUR_OPTIONS.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
+            <span className="mr-1 hidden text-xs font-medium text-zinc-400 sm:inline">Layout:</span>
+            {SCHEDULE_LAYOUT_OPTIONS.map(({ id, label, title, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => switchToScheduleLayout(id)}
+                aria-pressed={scheduleLayout === id}
+                title={title}
+                className={`inline-flex min-w-0 items-center justify-center gap-1 sm:gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors sm:justify-start sm:px-2.5 ${
+                  scheduleLayout === id
+                    ? 'bg-indigo-500/20 text-indigo-100 ring-1 ring-inset ring-indigo-400/40'
+                    : 'text-zinc-400 hover:bg-dark-hover hover:text-zinc-200'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="truncate">{label}</span>
+              </button>
             ))}
-          </select>
+          </div>
 
-          <span className="text-zinc-500">→</span>
+          {/* Custom Visible Hours Range */}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs sm:justify-start">
+            <span className="inline-flex items-center gap-1 text-zinc-400">
+              <Clock className="h-3.5 w-3.5 text-indigo-300" aria-hidden="true" />
+              <span>Visible hours:</span>
+            </span>
 
-          <select
-            aria-label="Visible end hour"
-            value={visibleEndTime}
-            onChange={(e) => {
-              const nextEnd = e.target.value;
-              if (nextEnd > visibleStartTime) {
-                setVisibleEndTime(nextEnd);
-              }
-            }}
-            className="h-9 sm:h-9.5 rounded-xl border border-dark-border bg-dark-bg px-3 py-1 font-mono text-xs sm:text-sm text-zinc-100 transition-colors focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-          >
-            {END_HOUR_OPTIONS.filter((t) => t > visibleStartTime).map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
+            <div className="flex items-center gap-1.5">
+              <select
+                aria-label="Visible start hour"
+                value={visibleStartTime}
+                onChange={(e) => {
+                  const nextStart = e.target.value;
+                  setVisibleStartTime(nextStart);
+                  if (nextStart >= visibleEndTime) {
+                    setVisibleEndTime('24:00');
+                  }
+                }}
+                className="h-9 sm:h-9.5 rounded-xl border border-dark-border bg-dark-bg px-2.5 py-1 font-mono text-xs sm:px-3 sm:text-sm text-zinc-100 transition-colors focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              >
+                {START_HOUR_OPTIONS.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
 
-          {(visibleStartTime !== '00:00' || visibleEndTime !== '24:00') && (
-            <button
-              type="button"
-              onClick={() => {
-                setVisibleStartTime('00:00');
-                setVisibleEndTime('24:00');
-              }}
-              className="rounded-md px-1.5 py-0.5 text-[11px] text-indigo-300 hover:bg-dark-hover hover:text-indigo-200"
-            >
-              Show full day
-            </button>
-          )}
+              <span className="text-zinc-500">→</span>
+
+              <select
+                aria-label="Visible end hour"
+                value={visibleEndTime}
+                onChange={(e) => {
+                  const nextEnd = e.target.value;
+                  if (nextEnd > visibleStartTime) {
+                    setVisibleEndTime(nextEnd);
+                  }
+                }}
+                className="h-9 sm:h-9.5 rounded-xl border border-dark-border bg-dark-bg px-2.5 py-1 font-mono text-xs sm:px-3 sm:text-sm text-zinc-100 transition-colors focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              >
+                {END_HOUR_OPTIONS.filter((t) => t > visibleStartTime).map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+
+              {(visibleStartTime !== '00:00' || visibleEndTime !== '24:00') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVisibleStartTime('00:00');
+                    setVisibleEndTime('24:00');
+                  }}
+                  className="rounded-md px-1.5 py-0.5 text-[11px] text-indigo-300 hover:bg-dark-hover hover:text-indigo-200"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
 
       {isError && events.length === 0 ? (
         <ErrorState

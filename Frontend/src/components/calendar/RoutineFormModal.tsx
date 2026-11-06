@@ -377,8 +377,8 @@ function RoutineFormInner({
                 </div>
 
                 {!day.isRestDay && (
-                  <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2 md:grid-cols-4">
-                    <div className="sm:col-span-2">
+                  <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-2 md:grid-cols-4 sm:gap-2.5">
+                    <div className="col-span-2">
                       <Input
                         label={`Day ${day.dayIndex + 1} title`}
                         placeholder="e.g. Push Day (Chest & Triceps)"
@@ -409,7 +409,7 @@ function RoutineFormInner({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-dark-border pt-4">
+        <div className="sticky bottom-0 z-10 -mx-3.5 -mb-3.5 flex items-center justify-end gap-2 border-t border-dark-border bg-dark-surface/95 px-4 py-3 backdrop-blur-md sm:-mx-5 sm:-mb-5 sm:px-5 sm:py-3.5">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
           </Button>

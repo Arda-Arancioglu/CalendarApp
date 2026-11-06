@@ -910,7 +910,7 @@ function EventFormBody({
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-2.5 pt-2">
+      <div className="sticky bottom-0 z-10 -mx-3.5 -mb-3.5 flex items-center justify-end gap-2.5 border-t border-dark-border bg-dark-surface/95 px-4 py-3 backdrop-blur-md sm:-mx-5 sm:-mb-5 sm:px-5 sm:py-3.5">
         <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
           Cancel
         </Button>

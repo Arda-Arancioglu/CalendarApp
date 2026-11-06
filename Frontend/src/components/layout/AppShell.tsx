@@ -401,20 +401,34 @@ function QuickThemePicker({ collapsed = false }: { collapsed?: boolean }) {
   );
 }
 
-function UserCard({ collapsed = false }: { collapsed?: boolean }) {
+export function UserCard({
+  collapsed = false,
+  onNavigate,
+}: {
+  collapsed?: boolean;
+  onNavigate?: () => void;
+}) {
   const { user, logout } = useAuth();
+  const location = useLocation();
+  const isSettings = location.pathname === '/settings';
   const initial = user?.username.charAt(0).toUpperCase() ?? '?';
 
   if (collapsed) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-xl border border-dark-border bg-dark-elevated/60 p-2">
-        <span
-          title={user?.username}
-          aria-hidden="true"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-xs font-semibold text-white"
+        <Link
+          to="/settings"
+          onClick={onNavigate}
+          title={`${user?.username ?? 'User'} (Account Settings)`}
+          aria-label="Account Settings"
+          className={cn(
+            'group relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-xs font-semibold text-white transition-all hover:scale-105 hover:ring-2 hover:ring-indigo-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400',
+            isSettings && 'ring-2 ring-indigo-400 ring-offset-2 ring-offset-dark-surface',
+          )}
         >
-          {initial}
-        </span>
+          <span>{initial}</span>
+          <Settings className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-dark-surface p-0.5 text-zinc-300 opacity-70 transition-opacity group-hover:opacity-100" />
+        </Link>
         <button
           type="button"
           onClick={logout}
@@ -429,27 +443,118 @@ function UserCard({ collapsed = false }: { collapsed?: boolean }) {
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-dark-border bg-dark-elevated/60 p-2.5">
-      <span
-        aria-hidden="true"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-sm font-semibold text-white"
+    <div
+      className={cn(
+        'group/card flex items-center gap-2 rounded-xl border border-dark-border bg-dark-elevated/60 p-2 transition-colors hover:border-indigo-500/40 hover:bg-dark-hover/70',
+        isSettings && 'border-indigo-500/40 bg-indigo-500/10 ring-1 ring-indigo-400/30',
+      )}
+    >
+      <Link
+        to="/settings"
+        onClick={onNavigate}
+        title="Open account settings"
+        aria-label="Open account settings"
+        className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
       >
-        {initial}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-zinc-100">{user?.username}</p>
-        <p className="text-xs text-zinc-500">Signed in</p>
-      </div>
+        <span
+          aria-hidden="true"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-sm font-semibold text-white transition-transform group-hover/card:scale-105"
+        >
+          {initial}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-zinc-100 group-hover/card:text-white">
+            {user?.username}
+          </p>
+          <p className="flex items-center gap-1 text-xs text-zinc-400 group-hover/card:text-indigo-300">
+            <span>Signed in</span>
+            <Settings
+              className="h-3 w-3 opacity-60 transition-opacity group-hover/card:opacity-100"
+              aria-hidden="true"
+            />
+          </p>
+        </div>
+      </Link>
       <button
         type="button"
         onClick={logout}
-        className="rounded-lg p-2 text-zinc-400 transition-colors hover:bg-dark-hover hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+        className="shrink-0 rounded-lg p-2 text-zinc-400 transition-colors hover:bg-dark-hover hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
         aria-label="Log out"
         title="Log out"
       >
         <LogOut className="h-4 w-4" />
       </button>
     </div>
+  );
+}
+
+export function MobileBottomNav() {
+  const { data: routines = [] } = useRoutines();
+  const activeRoutineCount = routines.filter((r) => r.isActive).length;
+
+  const mobileNavItems: {
+    to: string;
+    label: string;
+    icon: LucideIcon;
+    badgeCount?: number;
+  }[] = [
+    { to: '/calendar', label: 'Calendar', icon: CalendarDays },
+    { to: '/routines', label: 'Routines', icon: Dumbbell, badgeCount: activeRoutineCount },
+    { to: '/squads', label: 'Squads', icon: Users },
+    { to: '/categories', label: 'Categories', icon: Tags },
+    { to: '/settings', label: 'Settings', icon: Settings },
+  ];
+
+  return (
+    <nav
+      aria-label="Mobile Navigation"
+      className="fixed bottom-0 left-0 right-0 z-30 flex h-16 items-center justify-around border-t border-dark-border bg-dark-surface/95 px-1 backdrop-blur-xl lg:hidden"
+    >
+      {mobileNavItems.map(({ to, label, icon: Icon, badgeCount }) => (
+        <NavLink
+          key={to}
+          to={to}
+          className={({ isActive }) =>
+            cn(
+              'group relative flex flex-1 flex-col items-center justify-center gap-1 py-1 text-xs transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400',
+              isActive
+                ? 'text-indigo-300 font-semibold'
+                : 'text-zinc-400 hover:text-zinc-200',
+            )
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <div className="relative">
+                <Icon
+                  className={cn(
+                    'h-5 w-5 transition-transform group-hover:scale-105',
+                    isActive ? 'text-indigo-300' : 'text-zinc-400',
+                  )}
+                  aria-hidden="true"
+                />
+                {Boolean(badgeCount && badgeCount > 0) && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -top-1 -right-2 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-emerald-500 px-1 font-mono text-[9px] font-bold text-white shadow-xs"
+                  >
+                    {badgeCount}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] leading-tight tracking-tight">{label}</span>
+              {isActive && (
+                <span
+                  aria-hidden="true"
+                  className="absolute bottom-0.5 h-0.5 w-6 rounded-full bg-indigo-400"
+                />
+              )}
+            </>
+          )}
+        </NavLink>
+      ))}
+    </nav>
   );
 }
 
@@ -576,7 +681,7 @@ export function AppShell() {
             </div>
             <div className="mt-4 space-y-2.5">
               <QuickThemePicker />
-              <UserCard />
+              <UserCard onNavigate={closeDrawer} />
             </div>
           </div>
         </div>
@@ -584,10 +689,13 @@ export function AppShell() {
 
       <main
         id="main-content"
-        className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8"
+        className="mx-auto w-full max-w-7xl px-3.5 py-4 pb-24 sm:px-6 sm:py-6 sm:pb-24 lg:px-8 lg:py-8 lg:pb-8"
       >
         <Outlet />
       </main>
+
+      {/* Mobile bottom navigation bar */}
+      <MobileBottomNav />
     </div>
   );
 }
