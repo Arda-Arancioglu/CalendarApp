@@ -83,5 +83,12 @@ public class RoutineController {
     }
 
 
+    @PutMapping("/{id}")
+    public ResponseEntity<RoutineResponseDTO> updateRoutine(@PathVariable Long id,
+                                                            @Valid @RequestBody RoutineRequestDTO dto,
+                                                            Authentication authentication){
+        Long userId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok().body(routineService.updateRoutine(userId,id,dto));
+    }
 
 }

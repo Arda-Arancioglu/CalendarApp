@@ -253,4 +253,40 @@ public class RoutineService {
         return mapToDtoRoutine(routine);
     }
 
+
+    @Transactional
+    public RoutineResponseDTO updateRoutine(Long userId , Long routineId, RoutineRequestDTO dto){
+        Routine routine = routineRepository.findByUser_UserIdAndRoutineId(userId, routineId)
+                .orElseThrow(()-> new BadRequestException("Routine not found with id "+ routineId));
+
+        routine.setTitle(dto.title());
+        routine.setDescription(dto.description());
+        routine.setCycleLength(dto.cycleLength());
+        routine.setStartDate(dto.startDate());
+        routine.setEndDate(dto.endDate());
+        routine.setColor(dto.color());
+
+        routine.getItems().clear();
+
+        if(dto.items()!=null){
+            for(RoutineItemDTO itemDTO: dto.items()){
+                RoutineItem item = new RoutineItem();
+
+                item.setDayIndex(itemDTO.dayIndex());
+                item.setTitle(itemDTO.title());
+                item.setDescription(itemDTO.description());
+                item.setStartTime(itemDTO.startTime());
+                item.setEndTime(itemDTO.endTime());
+                item.setRestDay(itemDTO.isRestDay());
+                item.setRoutine(routine);
+                routine.getItems().add(item);
+            }
+        }
+
+        routineRepository.save(routine);
+        return mapToDtoRoutine(routine);
+    }
+
+
+
 }
