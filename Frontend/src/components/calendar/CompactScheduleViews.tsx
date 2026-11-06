@@ -244,6 +244,55 @@ export function CompactScheduleView({
     }
   };
 
+  const [selectedMobileDayKey, setSelectedMobileDayKey] = useState<string | 'all'>('all');
+
+  const effectiveDays = useMemo(() => {
+    if (selectedMobileDayKey === 'all') return visibleDays;
+    const filtered = visibleDays.filter((d) => format(d, 'yyyy-MM-dd') === selectedMobileDayKey);
+    return filtered.length > 0 ? filtered : visibleDays;
+  }, [visibleDays, selectedMobileDayKey]);
+
+  const renderMobileDaySelector = () => {
+    if (visibleDays.length <= 1) return null;
+    return (
+      <div className="flex sm:hidden items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <button
+          type="button"
+          onClick={() => setSelectedMobileDayKey('all')}
+          className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
+            selectedMobileDayKey === 'all'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'bg-dark-surface border border-dark-border text-zinc-300 hover:border-zinc-500'
+          }`}
+        >
+          All Days
+        </button>
+        {visibleDays.map((d) => {
+          const key = format(d, 'yyyy-MM-dd');
+          const isSelected = selectedMobileDayKey === key;
+          const isToday = isSameDay(d, today);
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSelectedMobileDayKey(key)}
+              className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
+                isSelected
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-dark-surface border border-dark-border text-zinc-300 hover:border-zinc-500'
+              }`}
+            >
+              <span>{format(d, 'EEE d')}</span>
+              {isToday && (
+                <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
   // ============================================================================
   // COMPACT VARIETY 1: Equal-Height Per-Day Task Cards + Uniform Free-Time Slots
   // ============================================================================
@@ -253,14 +302,15 @@ export function CompactScheduleView({
         data-testid="compact-cards-view"
         className="space-y-3"
       >
+        {renderMobileDaySelector()}
         <div
           className={
-            visibleDays.length === 1
+            effectiveDays.length === 1
               ? 'grid grid-cols-1 gap-3'
               : 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7'
           }
         >
-          {visibleDays.map((day) => {
+          {effectiveDays.map((day) => {
             const dateKey = format(day, 'yyyy-MM-dd');
             const isToday = isSameDay(day, today);
             const dayItems = unifiedItems.filter((it) => it.dateKey === dateKey);
@@ -414,76 +464,78 @@ export function CompactScheduleView({
     .join(' ');
 
   return (
-    <div
-      data-testid="coordinate-compressed-grid"
-      className="overflow-x-auto rounded-xl border border-dark-border bg-dark-surface/50 overscroll-x-contain touch-pan-x scrollbar-thin"
-    >
-      <div className={visibleDays.length === 1 ? 'min-w-0' : 'min-w-[720px]'}>
-        {/* Header Row: Time Column + Day Columns */}
-        <div
-          className="grid border-b border-dark-border bg-dark-elevated/50"
-          style={{
-            gridTemplateColumns: `64px repeat(${visibleDays.length}, minmax(0, 1fr))`,
-          }}
-        >
-          <div className="flex items-center justify-center border-r border-dark-border px-2 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-            <Clock className="mr-1 h-3 w-3 text-indigo-300" aria-hidden="true" />
-            Time
-          </div>
-          {visibleDays.map((day) => {
-            const dateKey = format(day, 'yyyy-MM-dd');
-            const isToday = isSameDay(day, today);
-            return (
-              <div
-                key={dateKey}
-                className={`flex items-center justify-between border-r border-dark-border px-3 py-2.5 last:border-r-0 ${
-                  isToday ? 'bg-indigo-500/10' : ''
-                }`}
-              >
-                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
-                  {format(day, 'EEE')}
-                </span>
-                <span
-                  className={`rounded-md px-1.5 py-0.5 font-mono text-xs font-bold ${
-                    isToday ? 'bg-indigo-500 text-white' : 'text-zinc-200'
+    <div className="space-y-3">
+      {renderMobileDaySelector()}
+      <div
+        data-testid="coordinate-compressed-grid"
+        className="overflow-x-auto rounded-xl border border-dark-border bg-dark-surface/50 overscroll-x-contain touch-pan-x scrollbar-thin"
+      >
+        <div className={effectiveDays.length === 1 ? 'min-w-0' : 'min-w-[720px]'}>
+          {/* Header Row: Time Column + Day Columns */}
+          <div
+            className="grid border-b border-dark-border bg-dark-elevated/50"
+            style={{
+              gridTemplateColumns: `64px repeat(${effectiveDays.length}, minmax(0, 1fr))`,
+            }}
+          >
+            <div className="flex items-center justify-center border-r border-dark-border px-2 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+              <Clock className="mr-1 h-3 w-3 text-indigo-300" aria-hidden="true" />
+              Time
+            </div>
+            {effectiveDays.map((day) => {
+              const dateKey = format(day, 'yyyy-MM-dd');
+              const isToday = isSameDay(day, today);
+              return (
+                <div
+                  key={dateKey}
+                  className={`flex items-center justify-between border-r border-dark-border px-3 py-2.5 last:border-r-0 ${
+                    isToday ? 'bg-indigo-500/10' : ''
                   }`}
                 >
-                  {format(day, 'MMM d')}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Coordinate-Compressed Body */}
-        <div
-          className="grid"
-          style={{
-            gridTemplateColumns: `64px repeat(${visibleDays.length}, minmax(0, 1fr))`,
-          }}
-        >
-          {/* Left Axis: Elementary Time Cut Intervals [t_i, t_{i+1}] */}
-          <div
-            className="grid border-r border-dark-border bg-dark-bg/50"
-            style={{ gridTemplateRows: gridRowTracks }}
-          >
-            {segments.map((seg) => (
-              <div
-                key={`axis_${seg.startMin}_${seg.endMin}`}
-                className={`flex flex-col items-center justify-center border-b border-dark-border/70 px-1.5 font-mono leading-tight ${
-                  seg.isActiveAcrossAnyDay
-                    ? 'text-[11px] font-semibold text-zinc-200'
-                    : 'bg-dark-bg/80 text-[10px] text-zinc-500'
-                }`}
-              >
-                <span>{formatMinutes24(seg.startMin)}</span>
-                <span className="text-[9px] text-zinc-500">↓ {formatMinutes24(seg.endMin)}</span>
-              </div>
-            ))}
+                  <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
+                    {format(day, 'EEE')}
+                  </span>
+                  <span
+                    className={`rounded-md px-1.5 py-0.5 font-mono text-xs font-bold ${
+                      isToday ? 'bg-indigo-500 text-white' : 'text-zinc-200'
+                    }`}
+                  >
+                    {format(day, 'MMM d')}
+                  </span>
+                </div>
+              );
+            })}
           </div>
 
-          {/* Day Columns with Row-Spanning Task Blocks */}
-          {visibleDays.map((day) => {
+          {/* Coordinate-Compressed Body */}
+          <div
+            className="grid"
+            style={{
+              gridTemplateColumns: `64px repeat(${effectiveDays.length}, minmax(0, 1fr))`,
+            }}
+          >
+            {/* Left Axis: Elementary Time Cut Intervals [t_i, t_{i+1}] */}
+            <div
+              className="grid border-r border-dark-border bg-dark-bg/50"
+              style={{ gridTemplateRows: gridRowTracks }}
+            >
+              {segments.map((seg) => (
+                <div
+                  key={`axis_${seg.startMin}_${seg.endMin}`}
+                  className={`flex flex-col items-center justify-center border-b border-dark-border/70 px-1.5 font-mono leading-tight ${
+                    seg.isActiveAcrossAnyDay
+                      ? 'text-[11px] font-semibold text-zinc-200'
+                      : 'bg-dark-bg/80 text-[10px] text-zinc-500'
+                  }`}
+                >
+                  <span>{formatMinutes24(seg.startMin)}</span>
+                  <span className="text-[9px] text-zinc-500">↓ {formatMinutes24(seg.endMin)}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Day Columns with Row-Spanning Task Blocks */}
+            {effectiveDays.map((day) => {
             const dateKey = format(day, 'yyyy-MM-dd');
             const isToday = isSameDay(day, today);
             const dayItems = unifiedItems.filter((it) => it.dateKey === dateKey);
@@ -603,5 +655,6 @@ export function CompactScheduleView({
         </div>
       </div>
     </div>
+  </div>
   );
 }

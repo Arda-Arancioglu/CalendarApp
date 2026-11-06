@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../../../context/ToastProvider';
@@ -484,5 +484,44 @@ describe('EventFormModal component', () => {
       categoryIds: [],
     });
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('filters curated emojis by search query (e.g. gym) and shows no matching found when unmatched', async () => {
+    const user = userEvent.setup();
+    renderEventModal();
+
+    // Open emoji picker
+    await user.click(screen.getByRole('button', { name: /pick an emoji for this event/i }));
+
+    const searchInput = screen.getByPlaceholderText(/search emojis/i);
+    expect(searchInput).toBeInTheDocument();
+
+    // Search for 'gym'
+    await user.type(searchInput, 'gym');
+    expect(screen.getByRole('button', { name: '🏋️' })).toBeInTheDocument();
+
+    // Search for a non-existent emoji
+    await user.clear(searchInput);
+    await user.type(searchInput, 'xyznotfound123');
+    expect(screen.getByText(/no matching emojis found for/i)).toBeInTheDocument();
+  });
+
+  it('renders inline "+ New category" button in CategoryMultiSelect and toggles inline creator', async () => {
+    const user = userEvent.setup();
+    renderEventModal();
+
+    const newCatBtn = screen.getByRole('button', { name: /new category/i });
+    expect(newCatBtn).toBeInTheDocument();
+
+    await user.click(newCatBtn);
+    const creatorRegion = screen.getByRole('region', { name: /create category inline/i });
+    expect(creatorRegion).toBeInTheDocument();
+    expect(within(creatorRegion).getByPlaceholderText(/category name/i)).toBeInTheDocument();
+    const cancelBtn = within(creatorRegion).getByRole('button', { name: /cancel/i });
+    expect(cancelBtn).toBeInTheDocument();
+
+    // Cancel closes the mini-panel
+    await user.click(cancelBtn);
+    expect(screen.queryByPlaceholderText(/category name/i)).not.toBeInTheDocument();
   });
 });

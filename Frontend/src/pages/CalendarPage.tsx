@@ -15,6 +15,7 @@ import type {
   EventContentArg,
   EventDropArg,
   EventInput,
+  EventMountArg,
 } from '@fullcalendar/core';
 import { addDays, addHours, differenceInCalendarDays, format, setHours, setMinutes } from 'date-fns';
 import {
@@ -27,12 +28,9 @@ import {
   Dumbbell,
   LayoutGrid,
   LayoutList,
-  Lock,
   Pencil,
   Plus,
-  Repeat,
   RotateCcw,
-  Waves,
   type LucideIcon,
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -51,7 +49,9 @@ import { EventDetailModal } from '../components/calendar/EventDetailModal';
 import { RecurrenceScopeModal } from '../components/calendar/RecurrenceScopeModal';
 import { RoutineDetailModal } from '../components/calendar/RoutineDetailModal';
 import { RoutineFormModal } from '../components/calendar/RoutineFormModal';
+import { PersonalEventCard } from '../components/calendar/PersonalEventCard';
 import { CompactScheduleView } from '../components/calendar/CompactScheduleViews';
+import { isShortEvent } from '../utils/eventLayout';
 import type { ScheduleLayoutMode } from '../utils/scheduleCompression';
 import {
   ExportCalendarModal,
@@ -67,7 +67,7 @@ import { useRoutineOccurrences, useRoutines } from '../hooks/useRoutines';
 import { useToast } from '../hooks/useToast';
 import { getErrorMessage } from '../utils/errors';
 import { fromApiDateTime, toApiDateTime } from '../utils/date';
-import { DEFAULT_EVENT_COLOR, normalizeHexColor, withAlpha } from '../utils/colors';
+import { DEFAULT_EVENT_COLOR, normalizeHexColor } from '../utils/colors';
 import type { DateRangeParams } from '../types/api';
 import type {
   EventRequestDTO,
@@ -174,235 +174,10 @@ function parseRoutineOccurrenceRange(occ: RoutineOccurrenceDTO): { start: Date; 
 
 /**
  * Custom event card inside FullCalendar supporting both Personal Events and Cycle Routine Occurrences.
+ * Delegates to PersonalEventCard for adaptive short-event single-row layout vs multi-line layout.
  */
 function renderPersonalEventContent(arg: EventContentArg) {
-  const kind = (arg.event.extendedProps.kind as 'event' | 'routine' | undefined) ?? 'event';
-  const color = (arg.event.extendedProps.primaryColor as string | undefined) ?? DEFAULT_EVENT_COLOR;
-  const isTimeGrid = arg.view.type.startsWith('timeGrid');
-
-  if (kind === 'routine') {
-    const occ = arg.event.extendedProps.routineOccurrence as RoutineOccurrenceDTO;
-    const routine = arg.event.extendedProps.routine as RoutineResponseDTO | undefined;
-    const dayLabel = routine?.cycleLength
-      ? `Day ${occ.dayIndex + 1} of ${routine.cycleLength}`
-      : `Day ${occ.dayIndex + 1}`;
-    const routineKey = `routine_${occ.routineId}_${occ.routineItemId}_${occ.startDate}`;
-
-    if (isTimeGrid) {
-      return (
-        <div
-          key={routineKey}
-          className="flex h-full w-full flex-col justify-between overflow-hidden rounded-[5px] px-2 py-1 text-xs leading-snug text-zinc-50"
-          style={{
-            backgroundColor: withAlpha(color, 0.30),
-            borderLeft: `4px solid ${color}`,
-            borderTop: `1px solid ${withAlpha(color, 0.65)}`,
-            borderRight: `1px solid ${withAlpha(color, 0.65)}`,
-            borderBottom: `1px solid ${withAlpha(color, 0.65)}`,
-          }}
-        >
-          <div className="min-w-0">
-            <div className="flex items-center justify-between gap-1">
-              {arg.timeText && (
-                <span className="truncate font-mono text-[11px] font-semibold text-zinc-100/95">
-                  {arg.timeText}
-                </span>
-              )}
-              <span
-                title={`Routine (${dayLabel})`}
-                className="inline-flex shrink-0 items-center gap-1 rounded-xs bg-black/35 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-100"
-              >
-                <Dumbbell className="h-2.5 w-2.5 text-indigo-200" aria-hidden="true" />
-                <span>{dayLabel}</span>
-              </span>
-            </div>
-            <p className="mt-0.5 line-clamp-2 font-semibold text-white">{arg.event.title}</p>
-            {occ.description && (
-              <p className="mt-0.5 line-clamp-2 text-[11px] text-zinc-200/80">
-                {occ.description}
-              </p>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div
-        key={routineKey}
-        className="flex w-full items-center gap-1.5 overflow-hidden rounded-xs px-1.5 py-0.5 text-xs leading-tight text-zinc-50"
-        style={{
-          backgroundColor: withAlpha(color, 0.28),
-          borderLeft: `3px solid ${color}`,
-          borderTop: `1px solid ${withAlpha(color, 0.55)}`,
-          borderRight: `1px solid ${withAlpha(color, 0.55)}`,
-          borderBottom: `1px solid ${withAlpha(color, 0.55)}`,
-        }}
-      >
-        <Dumbbell className="h-3 w-3 shrink-0 text-indigo-200" aria-label="Routine" />
-        <span className="truncate font-medium">{arg.event.title}</span>
-        <span className="ml-auto shrink-0 rounded-xs bg-black/35 px-1 py-0.5 font-mono text-[9px] font-semibold text-indigo-100">
-          {dayLabel}
-        </span>
-      </div>
-    );
-  }
-
-  const dto = arg.event.extendedProps.dto as EventResponseDTO | undefined;
-  const isStaged = Boolean(arg.event.extendedProps.isStaged);
-  const isMaskedPrivate = Boolean(arg.event.extendedProps.isMaskedPrivate);
-  const isFlexible = dto?.isFlexible ?? false;
-  const isPrivate = dto?.isPrivate ?? false;
-  const isRecurring = Boolean(dto?.recurrenceType && dto.recurrenceType !== 'NONE');
-  const eventKey = String(dto?.occurrenceId || dto?.eventId || arg.event.id);
-
-  if (isTimeGrid) {
-    return (
-      <div
-        key={eventKey}
-        className="flex h-full w-full flex-col justify-between overflow-hidden rounded-[5px] px-2 py-1 text-xs leading-snug text-zinc-50"
-        style={{
-          backgroundColor: withAlpha(color, 0.34),
-          borderLeft: `4px ${isFlexible ? 'dashed' : 'solid'} ${color}`,
-          borderTop: isFlexible
-            ? `1px dashed ${withAlpha(color, 0.85)}`
-            : `1px solid ${withAlpha(color, 0.45)}`,
-          borderRight: isFlexible
-            ? `1px dashed ${withAlpha(color, 0.85)}`
-            : `1px solid ${withAlpha(color, 0.45)}`,
-          borderBottom: isFlexible
-            ? `1px dashed ${withAlpha(color, 0.85)}`
-            : `1px solid ${withAlpha(color, 0.45)}`,
-        }}
-      >
-        <div className="min-w-0">
-          <div className="flex items-center justify-between gap-1">
-            {arg.timeText && (
-              <span className="truncate font-mono text-[11px] font-semibold text-zinc-100/95">
-                {arg.timeText}
-              </span>
-            )}
-            <span className="flex shrink-0 items-center gap-1">
-              {isStaged && (
-                <span className="rounded-xs bg-amber-500/30 px-1 py-0.5 font-mono text-[9px] font-bold uppercase text-amber-200">
-                  Staged
-                </span>
-              )}
-              {isRecurring && (
-                <span title="Recurring series" className="inline-flex">
-                  <Repeat
-                    className="h-3 w-3 text-indigo-200"
-                    aria-label="Recurring series"
-                  />
-                </span>
-              )}
-              {isFlexible && (
-                <span title="Flexible time" className="inline-flex">
-                  <Waves
-                    className="h-3 w-3 text-amber-300"
-                    aria-label="Flexible time"
-                  />
-                </span>
-              )}
-              {isPrivate && (
-                <span title="Private event" className="inline-flex">
-                  <Lock
-                    className="h-3 w-3 text-zinc-100"
-                    aria-label="Private event"
-                  />
-                </span>
-              )}
-            </span>
-          </div>
-          <p className="mt-0.5 line-clamp-2 font-semibold text-white">
-            {!isMaskedPrivate && dto?.emoji?.trim() && (
-              <span className="mr-1.5 inline-block select-none text-[13px] sm:text-[14px]">
-                {dto.emoji}
-              </span>
-            )}
-            {arg.event.title}
-          </p>
-          {!isMaskedPrivate && dto?.description && (
-            <p className="mt-0.5 line-clamp-2 text-[11px] text-zinc-200/80">
-              {dto.description}
-            </p>
-          )}
-        </div>
-
-        {!isMaskedPrivate && dto && dto.categories.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-1 overflow-hidden">
-            {dto.categories.map((cat) => (
-              <span
-                key={cat.categoryId}
-                className="truncate rounded-xs bg-black/30 px-1.5 py-0.5 text-[10px] font-medium text-zinc-100"
-              >
-                {cat.name}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      key={eventKey}
-      className="flex w-full items-center gap-1.5 overflow-hidden rounded-xs px-1.5 py-0.5 text-xs leading-tight text-zinc-50"
-      style={{
-        backgroundColor: withAlpha(color, 0.28),
-        borderLeft: `3px ${isFlexible ? 'dashed' : 'solid'} ${color}`,
-        borderTop: isFlexible ? `1px dashed ${withAlpha(color, 0.7)}` : undefined,
-        borderRight: isFlexible ? `1px dashed ${withAlpha(color, 0.7)}` : undefined,
-        borderBottom: isFlexible ? `1px dashed ${withAlpha(color, 0.7)}` : undefined,
-      }}
-    >
-      {arg.timeText && (
-        <span className="shrink-0 font-mono text-[10px] font-medium text-zinc-200/90">
-          {arg.timeText}
-        </span>
-      )}
-      <span className="truncate font-medium">
-        {!isMaskedPrivate && dto?.emoji?.trim() && (
-          <span className="mr-1 inline-block select-none text-[11px] sm:text-xs">
-            {dto.emoji}
-          </span>
-        )}
-        {arg.event.title}
-      </span>
-      <span className="ml-auto flex shrink-0 items-center gap-1">
-        {isStaged && (
-          <span className="rounded-xs bg-amber-500/30 px-1 font-mono text-[9px] font-bold text-amber-200">
-            •
-          </span>
-        )}
-        {isRecurring && (
-          <span title="Recurring series" className="inline-flex">
-            <Repeat
-              className="h-3 w-3 text-indigo-200"
-              aria-label="Recurring series"
-            />
-          </span>
-        )}
-        {isFlexible && (
-          <span title="Flexible time" className="inline-flex">
-            <Waves
-              className="h-3 w-3 text-amber-300"
-              aria-label="Flexible time"
-            />
-          </span>
-        )}
-        {isPrivate && (
-          <span title="Private event" className="inline-flex">
-            <Lock
-              className="h-3 w-3 text-zinc-200"
-              aria-label="Private event"
-            />
-          </span>
-        )}
-      </span>
-    </div>
-  );
+  return <PersonalEventCard arg={arg} />;
 }
 
 export function CalendarPage() {
@@ -411,7 +186,8 @@ export function CalendarPage() {
   const calendarContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [visibleRange, setVisibleRange] = useState<DateRangeParams | null>(null);
-  const [activeViewType, setActiveViewType] = useState<string>('dayGridMonth');
+  const [activeViewType, setActiveViewType] = useState<string>('timeGridWeek');
+  const [selectedMonthDate, setSelectedMonthDate] = useState<Date | null>(() => new Date());
   const [viewTitle, setViewTitle] = useState<string>('');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
 
@@ -669,6 +445,10 @@ export function CalendarPage() {
   };
 
   const handleDateClick = (arg: DateClickArg) => {
+    if (activeViewType === 'dayGridMonth') {
+      setSelectedMonthDate(arg.date);
+      return;
+    }
     if (arg.allDay) {
       const start = setMinutes(setHours(arg.date, 9), 0);
       openNewEventModal({ start, end: addHours(start, 1) });
@@ -856,6 +636,17 @@ export function CalendarPage() {
       calendarRef.current?.getApi().changeView('timeGridWeek');
     }
   };
+
+  // Ensure FullCalendar recalculates its layout and column widths whenever switching
+  // back to Standard View from Task/Compressed View (or inside the Export Modal)
+  useEffect(() => {
+    if (!showCompactView) {
+      const rafId = window.requestAnimationFrame(() => {
+        calendarRef.current?.getApi().updateSize();
+      });
+      return () => window.cancelAnimationFrame(rafId);
+    }
+  }, [showCompactView, effectiveStartTime, effectiveEndTime, effectiveLayoutMode]);
 
   return (
     <div className="pb-16">
@@ -1128,6 +919,17 @@ export function CalendarPage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => calendarRef.current?.getApi().changeView('timeGridThreeDay')}
+                    className={`border-l border-dark-border px-3 py-1.5 transition-colors ${
+                      activeViewType === 'timeGridThreeDay'
+                        ? 'bg-indigo-500 text-white'
+                        : 'text-zinc-300 hover:bg-dark-hover'
+                    }`}
+                  >
+                    3 Days
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => calendarRef.current?.getApi().changeView('timeGridDay')}
                     className={`border-l border-dark-border px-3 py-1.5 transition-colors ${
                       activeViewType === 'timeGridDay'
@@ -1172,16 +974,24 @@ export function CalendarPage() {
             <FullCalendar
               ref={calendarRef}
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-              initialView="dayGridMonth"
+              initialView="timeGridWeek"
               headerToolbar={{
                 left: 'prev,next today',
                 center: 'title',
-                right: 'dayGridMonth,timeGridWeek,timeGridDay',
+                right: 'dayGridMonth,timeGridWeek,timeGridThreeDay,timeGridDay',
+              }}
+              views={{
+                timeGridThreeDay: {
+                  type: 'timeGrid',
+                  duration: { days: 3 },
+                  buttonText: '3 Days',
+                },
               }}
               buttonText={{
                 today: 'Today',
                 month: 'Month',
                 week: 'Week',
+                timeGridThreeDay: '3 Days',
                 day: 'Day',
               }}
               firstDay={1}
@@ -1199,6 +1009,9 @@ export function CalendarPage() {
               editable={true}
               eventDurationEditable={true}
               eventResizableFromStart={true}
+              slotEventOverlap={true}
+              eventOrder="-duration,start,title"
+              eventClassNames={(arg) => (isShortEvent(arg) ? ['fc-event-short'] : [])}
               dayMaxEvents={3}
               eventTimeFormat={{
                 hour: '2-digit',
@@ -1220,8 +1033,126 @@ export function CalendarPage() {
               eventDrop={(arg) => void handleEventMoveOrResize(arg)}
               eventResize={(arg) => void handleEventMoveOrResize(arg)}
               eventContent={renderPersonalEventContent}
+              eventDidMount={(info: EventMountArg) => {
+                const time = info.timeText ? `${info.timeText} · ` : '';
+                info.el.setAttribute('title', `${time}${info.event.title}`);
+              }}
             />
           </div>
+
+          {/* Month view selected date agenda details */}
+          {activeViewType === 'dayGridMonth' && selectedMonthDate && !showCompactView && (
+            <div className="mt-4 rounded-xl border border-dark-border bg-dark-bg/60 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-dark-border pb-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-100">
+                    Schedule for {format(selectedMonthDate, 'EEEE, MMMM d, yyyy')}
+                  </h3>
+                  <p className="text-xs text-zinc-400">
+                    Tap any date in the calendar above to inspect its schedule agenda.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    const start = setMinutes(setHours(selectedMonthDate, 9), 0);
+                    openNewEventModal({ start, end: addHours(start, 1) });
+                  }}
+                  leftIcon={<Plus className="h-3.5 w-3.5" aria-hidden="true" />}
+                >
+                  Add event
+                </Button>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                {(() => {
+                  const selectedDateKey = format(selectedMonthDate, 'yyyy-MM-dd');
+                  const dayEvents = filteredEvents.filter(
+                    (ev) => ev.startTime.slice(0, 10) === selectedDateKey,
+                  );
+                  const dayRoutines = routineOccurrences.filter(
+                    (occ) => occ.startDate === selectedDateKey,
+                  );
+
+                  if (dayEvents.length === 0 && dayRoutines.length === 0) {
+                    return (
+                      <div className="py-6 text-center text-xs text-zinc-400">
+                        No events or routines scheduled for this day.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <>
+                      {dayEvents.map((ev) => {
+                        const startStr = ev.startTime.slice(11, 16);
+                        const endStr = ev.endTime.slice(11, 16);
+                        return (
+                          <div
+                            key={`month_agenda_ev_${ev.eventId}_${ev.occurrenceId ?? ''}`}
+                            onClick={() => setViewingEvent(ev)}
+                            className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-dark-border bg-dark-surface p-3 transition-colors hover:border-indigo-500/40 hover:bg-dark-hover"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="font-mono text-xs font-semibold text-indigo-300 shrink-0">
+                                {startStr} – {endStr}
+                              </span>
+                              <span className="truncate text-xs font-medium text-white flex items-center gap-1.5">
+                                {ev.emoji?.trim() && <span>{ev.emoji.trim()}</span>}
+                                <span>{ev.title}</span>
+                              </span>
+                            </div>
+                            {ev.categories.length > 0 && (
+                              <div className="hidden sm:flex items-center gap-1 shrink-0">
+                                {ev.categories.map((c) => (
+                                  <span
+                                    key={c.categoryId}
+                                    className="rounded-xs bg-black/40 px-1.5 py-0.5 text-[10px] text-zinc-200"
+                                  >
+                                    {c.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {dayRoutines.map((occ) => {
+                        const routine = routinesById.get(occ.routineId);
+                        const dayLabel = routine?.cycleLength
+                          ? `Day ${occ.dayIndex + 1} of ${routine.cycleLength}`
+                          : `Day ${occ.dayIndex + 1}`;
+                        return (
+                          <div
+                            key={`month_agenda_occ_${occ.routineId}_${occ.routineItemId}_${occ.startDate}`}
+                            onClick={() => setViewingRoutineOccurrence(occ)}
+                            className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-dark-border bg-dark-surface p-3 transition-colors hover:border-indigo-500/40 hover:bg-dark-hover"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="font-mono text-xs font-semibold text-indigo-300 shrink-0">
+                                {occ.startTime && occ.endTime
+                                  ? `${occ.startTime.slice(0, 5)} – ${occ.endTime.slice(0, 5)}`
+                                  : 'Rest Day'}
+                              </span>
+                              <span className="truncate text-xs font-medium text-white flex items-center gap-1.5">
+                                <Dumbbell className="h-3 w-3 text-indigo-300 shrink-0" />
+                                <span>{occ.title}</span>
+                              </span>
+                            </div>
+                            <span className="rounded-xs bg-black/40 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-200 shrink-0">
+                              {dayLabel}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1311,8 +1242,12 @@ export function CalendarPage() {
 
       {/* Privacy-Safe High-Res PNG Export modal */}
       <ExportCalendarModal
+        key={String(exportModalOpen)}
         isOpen={exportModalOpen}
-        onClose={() => setExportModalOpen(false)}
+        onClose={() => {
+          setExportModalOpen(false);
+          setActiveExportOptions(null);
+        }}
         calendarContainerRef={calendarContainerRef}
         defaultVisibleStartTime={visibleStartTime}
         defaultVisibleEndTime={visibleEndTime}

@@ -10,7 +10,7 @@ export function Logo({ className, compact = false }: { className?: string; compa
       </span>
       {!compact && (
         <span className="text-lg font-semibold tracking-tight text-zinc-50">
-          Event<span className="text-indigo-300">Flow</span>
+          Calendar <span className="text-indigo-300">App</span>
         </span>
       )}
     </span>

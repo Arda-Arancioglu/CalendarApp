@@ -6,22 +6,35 @@ import { HEX_COLOR_REGEX } from './validation';
 export const DEFAULT_EVENT_COLOR = '#6366F1';
 
 /**
- * Curated palette for category creation and squad member colors.
+ * Curated 24 distinct, vibrant 6-digit hex colors for category creation,
+ * routines, and schedule highlights.
  * All values match the backend's `^#[A-Fa-f0-9]{6}$` rule.
  */
 export const CATEGORY_COLOR_PRESETS: readonly { hex: string; name: string }[] = [
   { hex: '#6366F1', name: 'Indigo' },
-  { hex: '#3B82F6', name: 'Blue' },
-  { hex: '#06B6D4', name: 'Cyan' },
-  { hex: '#10B981', name: 'Emerald' },
-  { hex: '#84CC16', name: 'Lime' },
-  { hex: '#F59E0B', name: 'Amber' },
-  { hex: '#F97316', name: 'Orange' },
-  { hex: '#EF4444', name: 'Red' },
-  { hex: '#EC4899', name: 'Pink' },
+  { hex: '#4F46E5', name: 'Deep Indigo' },
+  { hex: '#8B5CF6', name: 'Violet' },
   { hex: '#A855F7', name: 'Purple' },
+  { hex: '#D946EF', name: 'Fuchsia' },
+  { hex: '#EC4899', name: 'Pink' },
+  { hex: '#F43F5E', name: 'Rose' },
+  { hex: '#EF4444', name: 'Red' },
+  { hex: '#DC2626', name: 'Crimson' },
+  { hex: '#F97316', name: 'Orange' },
+  { hex: '#EA580C', name: 'Burnt Orange' },
+  { hex: '#F59E0B', name: 'Amber' },
+  { hex: '#EAB308', name: 'Yellow' },
+  { hex: '#84CC16', name: 'Lime' },
+  { hex: '#22C55E', name: 'Green' },
+  { hex: '#10B981', name: 'Emerald' },
   { hex: '#14B8A6', name: 'Teal' },
+  { hex: '#06B6D4', name: 'Cyan' },
+  { hex: '#0EA5E9', name: 'Sky' },
+  { hex: '#3B82F6', name: 'Blue' },
+  { hex: '#2563EB', name: 'Royal Blue' },
   { hex: '#64748B', name: 'Slate' },
+  { hex: '#78716C', name: 'Stone' },
+  { hex: '#A16207', name: 'Bronze' },
 ];
 
 /**
@@ -38,6 +51,16 @@ export const SQUAD_MEMBER_PALETTE: readonly string[] = [
   '#3B82F6', // Blue
   '#84CC16', // Lime
   '#14B8A6', // Teal
+  '#D946EF', // Fuchsia
+  '#F43F5E', // Rose
+  '#22C55E', // Green
+  '#0EA5E9', // Sky
+  '#8B5CF6', // Violet
+  '#EA580C', // Burnt Orange
+  '#EAB308', // Yellow
+  '#2563EB', // Royal Blue
+  '#DC2626', // Crimson
+  '#4F46E5', // Deep Indigo
 ];
 
 /**

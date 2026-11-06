@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toPng } from 'html-to-image';
 import { Camera, Download, EyeOff, LayoutGrid, Moon, Palette } from 'lucide-react';
 import { Modal } from '../ui/Modal';
@@ -35,6 +35,16 @@ function waitNextFrame(): Promise<void> {
   });
 }
 
+function waitTwoFrames(): Promise<void> {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        window.setTimeout(resolve, 80);
+      });
+    });
+  });
+}
+
 export function ExportCalendarModal({
   isOpen,
   onClose,
@@ -56,7 +66,95 @@ export function ExportCalendarModal({
   );
   const [exportLayoutMode, setExportLayoutMode] =
     useState<ScheduleLayoutMode>(defaultLayoutMode);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
+    if (isOpen) {
+      setExportLayoutMode(defaultLayoutMode);
+    }
+  }
+
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState<boolean>(false);
+
+  // Close helper that restores default schedule layout before closing
+  const handleClose = () => {
+    onApplyExportOptions?.(null);
+    onClose();
+  };
+
+  // Clean up export options if unmounted while open
+  useEffect(() => {
+    return () => {
+      onApplyExportOptions?.(null);
+    };
+  }, [onApplyExportOptions]);
+
+  // Synchronously apply active options to parent and generate debounced live preview
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Immediately apply export options to parent so FullCalendar / CompactView switches
+    onApplyExportOptions?.({
+      maskPrivateEvents,
+      preserveCategoryColors,
+      hideInactiveNightHours,
+      visibleStartTime: hideInactiveNightHours ? visibleStartTime : '00:00',
+      visibleEndTime: hideInactiveNightHours ? visibleEndTime : '24:00',
+      layoutMode: exportLayoutMode,
+    });
+
+    let isCancelled = false;
+
+    const generatePreview = async () => {
+      await waitTwoFrames();
+      if (isCancelled) return;
+
+      const targetEl = calendarContainerRef.current;
+      if (!targetEl) return;
+
+      setIsPreviewLoading(true);
+      try {
+        const computedBg =
+          window.getComputedStyle(document.documentElement).getPropertyValue('--color-dark-surface').trim() ||
+          '#11131F';
+
+        const dataUrl = await toPng(targetEl, {
+          pixelRatio: 0.6,
+          skipFonts: true,
+          cacheBust: false,
+          backgroundColor: computedBg,
+        });
+
+        if (!isCancelled) {
+          setPreviewUrl(dataUrl);
+        }
+      } catch {
+        // Fallback silently if targetEl is detached or unrenderable in JSDOM
+      } finally {
+        if (!isCancelled) {
+          setIsPreviewLoading(false);
+        }
+      }
+    };
+
+    void generatePreview();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    isOpen,
+    calendarContainerRef,
+    maskPrivateEvents,
+    preserveCategoryColors,
+    hideInactiveNightHours,
+    visibleStartTime,
+    visibleEndTime,
+    exportLayoutMode,
+    onApplyExportOptions,
+  ]);
 
   if (!isOpen) return null;
 
@@ -69,15 +167,6 @@ export function ExportCalendarModal({
 
     setIsExporting(true);
     try {
-      await onApplyExportOptions?.({
-        maskPrivateEvents,
-        preserveCategoryColors,
-        hideInactiveNightHours,
-        visibleStartTime: hideInactiveNightHours ? visibleStartTime : '00:00',
-        visibleEndTime: hideInactiveNightHours ? visibleEndTime : '24:00',
-        layoutMode: exportLayoutMode,
-      });
-
       await waitNextFrame();
 
       const computedBg =
@@ -86,6 +175,7 @@ export function ExportCalendarModal({
 
       const dataUrl = await toPng(targetEl, {
         pixelRatio: 2,
+        skipFonts: true,
         cacheBust: true,
         backgroundColor: computedBg,
       });
@@ -101,11 +191,10 @@ export function ExportCalendarModal({
       document.body.removeChild(link);
 
       toast.success(`Downloaded ${fileName}`);
-      onClose();
+      handleClose();
     } catch {
       toast.error('Failed to generate calendar PNG export.');
     } finally {
-      await onApplyExportOptions?.(null);
       setIsExporting(false);
     }
   };
@@ -113,20 +202,39 @@ export function ExportCalendarModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title="Export Calendar View (High-Res PNG)"
       maxWidth="lg"
     >
       <div className="space-y-4">
-        <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-3.5 text-xs leading-relaxed text-zinc-200">
-          <div className="flex items-center gap-2 font-semibold text-indigo-200">
-            <Camera className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>2x Retina Snapshot</span>
+        {/* Live Export Thumbnail Preview */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs font-semibold text-zinc-300">
+            <span className="flex items-center gap-1.5">
+              <Camera className="h-3.5 w-3.5 text-indigo-300" aria-hidden="true" />
+              Live Export Preview
+            </span>
+            {isPreviewLoading && (
+              <span className="text-[11px] text-zinc-400">Updating preview…</span>
+            )}
           </div>
-          <p className="mt-1 text-zinc-300">
-            Renders a crisp, high-resolution (<code className="text-indigo-200">pixelRatio: 2</code>) PNG
-            of your active calendar view ready to share with friends, teammates, or coaches.
-          </p>
+          <div className="flex min-h-[120px] max-h-56 w-full items-center justify-center overflow-hidden rounded-xl border border-dark-border bg-dark-bg p-2">
+            {previewUrl ? (
+              <img
+                src={previewUrl}
+                alt="Live Calendar Export Preview"
+                className="max-h-52 w-full object-contain rounded-lg"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-1 text-xs text-zinc-400">
+                {isPreviewLoading ? (
+                  <span>Generating snapshot preview…</span>
+                ) : (
+                  <span>Ready to export crisp 2x PNG</span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Layout Selector for Export */}
@@ -209,10 +317,12 @@ export function ExportCalendarModal({
               <div className="text-xs leading-relaxed">
                 <span className="flex items-center gap-1.5 font-semibold text-zinc-100">
                   <Moon className="h-3.5 w-3.5 text-indigo-300" aria-hidden="true" />
-                  <span>Hide inactive hours</span>
+                  <span>Hide custom hours</span>
                 </span>
                 <p className="mt-0.5 text-zinc-400">
-                  Off by default, so the full day (00:00 – 24:00) is exported. Turn on to pick a custom start and end hour.
+                  {hideInactiveNightHours
+                    ? `Only show hours between ${visibleStartTime} – ${visibleEndTime}`
+                    : 'Off by default, so the full day (00:00 – 24:00) is exported. Turn on to pick a custom start and end hour.'}
                 </p>
               </div>
             </label>
@@ -235,7 +345,7 @@ export function ExportCalendarModal({
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-dark-border pt-4">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={isExporting}>
+          <Button type="button" variant="secondary" onClick={handleClose} disabled={isExporting}>
             Cancel
           </Button>
           <Button

@@ -506,6 +506,22 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   margin: 0 !important;
   border-radius: 0.375rem;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  min-height: 22px !important;
+}
+
+/* Short events elevated styling */
+.fc .fc-timegrid-event.fc-event-short {
+  z-index: 20 !important;
+  width: 92% !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.2) !important;
+}
+
+.fc .fc-timegrid-event.fc-event-short:hover {
+  z-index: 45 !important;
+}
+
+.fc .fc-timegrid-event:hover {
+  z-index: 40 !important;
 }
 
 .fc .fc-timegrid-event .fc-event-main {
@@ -514,6 +530,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   padding: 0 !important;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* Keep top and bottom resize handles clickable above our custom event card */

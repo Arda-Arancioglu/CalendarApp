@@ -158,7 +158,7 @@ describe('Phase 6 Routine, Export & Compact Schedule Views', () => {
 
     // Default export mode is full 24h (Hide inactive hours unchecked by default)
     const hideInactiveCheckbox = screen.getByRole('checkbox', {
-      name: /hide inactive hours/i,
+      name: /hide custom hours/i,
     });
     expect(hideInactiveCheckbox).not.toBeChecked();
 

@@ -10,14 +10,19 @@ import type {
   EventContentArg,
   EventInput,
 } from '@fullcalendar/core';
+import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns';
 import {
   ArrowLeft,
   CalendarClock,
+  Columns3,
   EyeOff,
+  LayoutGrid,
+  LayoutList,
   Settings2,
   Sparkles,
   User,
   Waves,
+  type LucideIcon,
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
@@ -30,6 +35,10 @@ import {
   MemberLegend,
   type SquadCalendarLegendMember,
 } from '../components/squads/MemberLegend';
+import { EventHoverPortalTooltip } from '../components/calendar/EventHoverPortalTooltip';
+import { CompactScheduleView } from '../components/calendar/CompactScheduleViews';
+import type { ScheduleLayoutMode } from '../utils/scheduleCompression';
+import type { EventResponseDTO } from '../types/event';
 import { useSquadDetail } from '../hooks/useSquads';
 import { useSquadCalendar } from '../hooks/useSquadCalendar';
 import { formatDateTime, fromApiDateTime, toApiDateTime } from '../utils/date';
@@ -60,7 +69,35 @@ function isBusyEventTitle(title: string | null | undefined): boolean {
   return trimmed === '' || trimmed.toUpperCase() === 'BUSY';
 }
 
-function renderSquadEventContent(arg: EventContentArg) {
+const SCHEDULE_LAYOUT_OPTIONS: {
+  id: ScheduleLayoutMode;
+  label: string;
+  title: string;
+  icon: LucideIcon;
+}[] = [
+  {
+    id: 'standard',
+    label: 'Standard View',
+    title: 'Proportional time grid',
+    icon: LayoutGrid,
+  },
+  {
+    id: 'cards',
+    label: 'Task View',
+    title: 'Equal-height task cards per day with compact free-time dividers',
+    icon: LayoutList,
+  },
+  {
+    id: 'compressed',
+    label: 'Compressed View',
+    title: 'Compressed time grid that only keeps the time cuts that matter',
+    icon: Columns3,
+  },
+];
+
+function SquadEventCard({ arg }: { arg: EventContentArg }) {
+  const [hoverCoords, setHoverCoords] = useState<{ x: number; y: number } | null>(null);
+
   if (arg.event.display === 'background') {
     return (
       <div className="flex h-full w-full items-start justify-end p-1">
@@ -78,7 +115,6 @@ function renderSquadEventContent(arg: EventContentArg) {
   const isTimeGrid = arg.view.type.startsWith('timeGrid');
   const { color, username, displayTitle, isBusyMasked, isFlexible } = meta;
 
-  // Muted striped background for "Busy" events
   const backgroundStyle = isBusyMasked
     ? {
         backgroundColor: withAlpha(color, 0.16),
@@ -96,9 +132,24 @@ function renderSquadEventContent(arg: EventContentArg) {
         borderBottom: `1px ${isFlexible ? 'dashed' : 'solid'} ${withAlpha(color, 0.5)}`,
       };
 
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    setHoverCoords({ x: e.clientX, y: e.clientY });
+  };
+  const handleMouseMove = (e: React.MouseEvent) => {
+    setHoverCoords({ x: e.clientX, y: e.clientY });
+  };
+  const handleMouseLeave = () => {
+    setHoverCoords(null);
+  };
+
+  const timeSpan = arg.timeText || '';
+
   if (isTimeGrid) {
     return (
       <div
+        onMouseEnter={handleMouseEnter}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
         className="flex h-full w-full flex-col justify-between overflow-hidden rounded-[5px] px-2 py-1 text-xs leading-snug"
         style={backgroundStyle}
       >
@@ -133,12 +184,29 @@ function renderSquadEventContent(arg: EventContentArg) {
             {arg.timeText}
           </span>
         )}
+
+        {hoverCoords && (
+          <EventHoverPortalTooltip
+            coords={hoverCoords}
+            data={{
+              timeSpan,
+              title: displayTitle,
+              userLabel: username,
+              userColor: color,
+              isBusyMasked,
+              isFlexible,
+            }}
+          />
+        )}
       </div>
     );
   }
 
   return (
     <div
+      onMouseEnter={handleMouseEnter}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
       className="flex w-full items-center gap-1.5 overflow-hidden rounded-xs px-1.5 py-0.5 text-xs leading-tight"
       style={backgroundStyle}
     >
@@ -160,8 +228,25 @@ function renderSquadEventContent(arg: EventContentArg) {
           <Waves className="h-3 w-3 text-amber-300" aria-label="Flexible time" />
         </span>
       )}
+      {hoverCoords && (
+        <EventHoverPortalTooltip
+          coords={hoverCoords}
+          data={{
+            timeSpan,
+            title: displayTitle,
+            userLabel: username,
+            userColor: color,
+            isBusyMasked,
+            isFlexible,
+          }}
+        />
+      )}
     </div>
   );
+}
+
+function renderSquadEventContent(arg: EventContentArg) {
+  return <SquadEventCard arg={arg} />;
 }
 
 export function SquadCalendarPage() {
@@ -171,6 +256,7 @@ export function SquadCalendarPage() {
 
   const [visibleRange, setVisibleRange] = useState<DateRangeParams | null>(null);
   const [currentViewType, setCurrentViewType] = useState<string>('timeGridWeek');
+  const [scheduleLayout, setScheduleLayout] = useState<ScheduleLayoutMode>('standard');
   // Track members the user has manually toggled OFF (by default every member is ON)
   const [disabledUserIds, setDisabledUserIds] = useState<number[]>([]);
   const [showFreeTime, setShowFreeTime] = useState<boolean>(false);
@@ -330,6 +416,41 @@ export function SquadCalendarPage() {
     if (meta) setSelectedEvent(meta);
   };
 
+  const visibleDays = useMemo<Date[]>(() => {
+    if (!visibleRange) return [];
+    const start = startOfDay(fromApiDateTime(visibleRange.start));
+    const end = fromApiDateTime(visibleRange.end);
+    const count = Math.max(1, differenceInCalendarDays(end, start));
+    return Array.from({ length: count }, (_, i) => addDays(start, i));
+  }, [visibleRange]);
+
+  const squadAsEventDtos = useMemo<EventResponseDTO[]>(() => {
+    const list: EventResponseDTO[] = [];
+    const colorByUser = new Map<number, string>();
+    for (const m of legendMembers) {
+      colorByUser.set(m.userId, m.color);
+    }
+    for (const member of calendarMembers) {
+      if (!enabledUserIds.includes(member.userId)) continue;
+      const color = colorByUser.get(member.userId) ?? getMemberColor(-1, member.userId);
+      for (const ev of member.events) {
+        const masked = isBusyEventTitle(ev.title);
+        const displayTitle = `${member.username}: ${masked ? 'Busy' : (ev.title?.trim() ?? 'Busy')}`;
+        list.push({
+          eventId: ev.taskId,
+          title: displayTitle,
+          description: null,
+          startTime: ev.startTime,
+          endTime: ev.endTime,
+          isFlexible: ev.isFlexible,
+          isPrivate: masked,
+          categories: [{ categoryId: member.userId, name: member.username, color }],
+        });
+      }
+    }
+    return list;
+  }, [calendarMembers, enabledUserIds, legendMembers]);
+
   if (squadId === null) {
     return <ErrorState error={new Error('Invalid squad ID')} />;
   }
@@ -391,6 +512,36 @@ export function SquadCalendarPage() {
         }
       />
 
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5">
+        <div
+          role="group"
+          aria-label="Schedule layout modes"
+          className="inline-flex rounded-xl border border-dark-border bg-dark-bg p-1 shadow-inner"
+        >
+          {SCHEDULE_LAYOUT_OPTIONS.map((opt) => {
+            const Icon = opt.icon;
+            const isSelected = scheduleLayout === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setScheduleLayout(opt.id)}
+                aria-pressed={isSelected}
+                title={opt.title}
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
+                  isSelected
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-dark-surface'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="hidden sm:inline">{opt.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <MemberLegend
         members={legendMembers}
         enabledUserIds={enabledUserIds}
@@ -415,47 +566,94 @@ export function SquadCalendarPage() {
             </div>
           )}
 
-          <FullCalendar
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView="timeGridWeek"
-            headerToolbar={{
-              left: 'prev,next today',
-              center: 'title',
-              right: 'dayGridMonth,timeGridWeek,timeGridDay',
-            }}
-            buttonText={{
-              today: 'Today',
-              month: 'Month',
-              week: 'Week',
-              day: 'Day',
-            }}
-            firstDay={1}
-            height="auto"
-            allDaySlot={false}
-            slotMinTime="00:00:00"
-            slotMaxTime="24:00:00"
-            slotDuration="00:30:00"
-            slotLabelInterval="01:00:00"
-            expandRows={true}
-            nowIndicator={true}
-            editable={false}
-            selectable={false}
-            dayMaxEvents={4}
-            eventTimeFormat={{
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false,
-            }}
-            slotLabelFormat={{
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false,
-            }}
-            datesSet={handleDatesSet}
-            events={combinedEvents}
-            eventClick={handleEventClick}
-            eventContent={renderSquadEventContent}
-          />
+          {scheduleLayout !== 'standard' ? (
+            <CompactScheduleView
+              mode={scheduleLayout}
+              visibleDays={visibleDays}
+              events={squadAsEventDtos}
+              routineOccurrences={[]}
+              routinesById={new Map()}
+              stagedOverrides={{}}
+              visibleStartTime="00:00"
+              visibleEndTime="24:00"
+              maskPrivateEvents={false}
+              preserveCategoryColors={true}
+              onSelectEvent={(dto) => {
+                for (const m of calendarMembers) {
+                  const found = m.events.find((ev) => ev.taskId === dto.eventId);
+                  if (found) {
+                    const isMasked = isBusyEventTitle(found.title);
+                    const legendM = legendMembers.find((lm) => lm.userId === m.userId);
+                    setSelectedEvent({
+                      taskId: found.taskId,
+                      userId: m.userId,
+                      username: m.username,
+                      color: legendM?.color ?? '#6366F1',
+                      displayTitle: isMasked ? 'Busy' : (found.title?.trim() ?? 'Busy'),
+                      isBusyMasked: isMasked,
+                      isFlexible: found.isFlexible,
+                      startTime: found.startTime,
+                      endTime: found.endTime,
+                    });
+                    break;
+                  }
+                }
+              }}
+              onSelectRoutineOccurrence={() => {}}
+            />
+          ) : (
+            <FullCalendar
+              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+              initialView="timeGridWeek"
+              headerToolbar={{
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridThreeDay,timeGridDay',
+              }}
+              views={{
+                timeGridThreeDay: {
+                  type: 'timeGrid',
+                  duration: { days: 3 },
+                  buttonText: '3 Days',
+                },
+              }}
+              buttonText={{
+                today: 'Today',
+                month: 'Month',
+                week: 'Week',
+                timeGridThreeDay: '3 Days',
+                day: 'Day',
+              }}
+              firstDay={1}
+              height="auto"
+              allDaySlot={false}
+              slotMinTime="00:00:00"
+              slotMaxTime="24:00:00"
+              slotDuration="00:30:00"
+              slotLabelInterval="01:00:00"
+              expandRows={true}
+              nowIndicator={true}
+              editable={false}
+              selectable={false}
+              slotEventOverlap={true}
+              eventOrder="-duration,start,title"
+              dayMaxEvents={4}
+              eventTimeFormat={{
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+              }}
+              slotLabelFormat={{
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+              }}
+              datesSet={handleDatesSet}
+              events={combinedEvents}
+              eventClick={handleEventClick}
+              eventContent={renderSquadEventContent}
+            />
+          )}
         </div>
       )}
 
