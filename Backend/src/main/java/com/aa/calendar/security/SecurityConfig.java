@@ -79,7 +79,8 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"
                 ,"https://calendar-app-project-xyron.vercel.app",
-                "https://calendar-app-pi-rouge.vercel.app"));
+                "https://calendar-app-pi-rouge.vercel.app",
+                "https://calendarapp-1-yusg.onrender.com"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

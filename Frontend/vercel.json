@@ -1,5 +1,9 @@
 {
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "destination": "https://calendarapp-1-yusg.onrender.com/$1",
+      "permanent": false
+    }
   ]
 }

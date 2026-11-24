@@ -1,6 +1,6 @@
 # Squad & Routine Calendar Platform
 
-🔗 **Live Application:** [calendar-app-pi-rouge.vercel.app](https://calendar-app-pi-rouge.vercel.app)
+🔗 **Live Application:** [https://calendarapp-1-yusg.onrender.com](https://calendarapp-1-yusg.onrender.com)
 
 A full-stack calendar and group scheduling platform built with Spring Boot and React. Supports standard recurrence, custom multi-day gym/shift cycle routines, scoped event edits, and squad availability sharing.
 
@@ -44,11 +44,13 @@ A full-stack calendar and group scheduling platform built with Spring Boot and R
 ## Local Development
 
 ### 1. Prerequisites
+
 - JDK 21+
 - Node.js 20+
 - PostgreSQL instance running locally or Neon connection string
 
 ### 2. Backend Setup
+
 1. Configure database credentials in `Backend/src/main/resources/application.properties` (or set environment variables `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`).
 2. Run backend:
    ```bash
@@ -58,6 +60,7 @@ A full-stack calendar and group scheduling platform built with Spring Boot and R
    Backend starts on `http://localhost:8080`.
 
 ### 3. Frontend Setup
+
 1. Install dependencies:
    ```bash
    cd Frontend
